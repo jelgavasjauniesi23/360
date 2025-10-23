@@ -8,6 +8,8 @@ import http.server
 import socketserver
 import os
 import webbrowser
+import json
+import urllib.parse
 from pathlib import Path
 
 # Configuration
@@ -23,10 +25,70 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
+        # Handle hotspots API
+        if self.path.startswith('/api/hotspots/'):
+            self.handle_get_hotspots()
         # Handle root path
-        if self.path == '/':
+        elif self.path == '/':
             self.path = '/index.html'
-        return super().do_GET()
+            return super().do_GET()
+        else:
+            return super().do_GET()
+
+    def do_POST(self):
+        # Handle hotspots API
+        if self.path.startswith('/api/hotspots/'):
+            self.handle_save_hotspots()
+        else:
+            return super().do_POST()
+
+    def handle_get_hotspots(self):
+        """Get hotspots for a specific folder"""
+        try:
+            # Extract folder name from path
+            folder = self.path.split('/')[-1]
+            hotspots_file = f'hotspots_{folder}.json'
+            
+            if os.path.exists(hotspots_file):
+                with open(hotspots_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(data).encode('utf-8'))
+            else:
+                # Return empty hotspots if file doesn't exist
+                empty_data = {"hotspots": []}
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.end_headers()
+                self.wfile.write(json.dumps(empty_data).encode('utf-8'))
+        except Exception as e:
+            self.send_error(500, f"Error reading hotspots: {str(e)}")
+
+    def handle_save_hotspots(self):
+        """Save hotspots for a specific folder"""
+        try:
+            # Extract folder name from path
+            folder = self.path.split('/')[-1]
+            hotspots_file = f'hotspots_{folder}.json'
+            
+            # Read request body
+            content_length = int(self.headers['Content-Length'])
+            post_data = self.rfile.read(content_length)
+            data = json.loads(post_data.decode('utf-8'))
+            
+            # Save to JSON file
+            with open(hotspots_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2, ensure_ascii=False)
+            
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.end_headers()
+            self.wfile.write(json.dumps({"success": True, "message": "Hotspots saved successfully"}).encode('utf-8'))
+            
+        except Exception as e:
+            self.send_error(500, f"Error saving hotspots: {str(e)}")
 
 def main():
     # Change to the directory containing this script
