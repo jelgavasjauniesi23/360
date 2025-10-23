@@ -5,9 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>360° Virtual Tour</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
-    <script src="vr-button.js"></script>
+    <script src="https://aframe.io/releases/1.4.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/donmccurdy/aframe-extras@v6.1.1/dist/aframe-extras.min.js"></script>
+    <script>
+        // Wait for A-Frame to be ready before registering components
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof AFRAME !== 'undefined') {
+                // Register cursor-listener component
+                AFRAME.registerComponent('cursor-listener', {
+                    init: function () {
+                        this.el.addEventListener('click', function (evt) {
+                            console.log('Hotspot clicked!');
+                        });
+                    }
+                });
+            }
+        });
+    </script>
 </head>
 <body>
     <div id="app">
@@ -16,7 +30,6 @@
             <h1>360° Virtual Tour</h1>
             <div class="controls">
                 <button id="devModeBtn" class="btn btn-secondary">Dev Mode</button>
-                <button id="vrBtn" class="btn btn-primary">VR Mode</button>
             </div>
         </header>
 
@@ -32,7 +45,42 @@
 
         <!-- Main Viewer -->
         <div id="viewer-container">
-            <canvas id="viewer"></canvas>
+            <a-scene id="aframe-scene" 
+                     vr-mode-ui="enabled: true" 
+                     embedded 
+                     style="height: 100%; width: 100%;"
+                     background="color: #000"
+                     loading-screen="dotsColor: #667eea; backgroundColor: #000">
+                
+                <!-- 360° Image Sphere -->
+                <a-sky id="sky-sphere" 
+                       radius="500" 
+                       src="" 
+                       rotation="0 -130 0">
+                </a-sky>
+                
+                <!-- Camera with look controls -->
+                <a-camera id="main-camera" 
+                          look-controls="enabled: true; pointerLockEnabled: true"
+                          wasd-controls="enabled: false"
+                          cursor="rayOrigin: mouse"
+                          raycaster="objects: [data-raycastable]">
+                </a-camera>
+                
+            <!-- Hotspots will be added here dynamically -->
+            <div id="hotspot-container"></div>
+            
+            <!-- Reticle for hotspot placement -->
+            <div id="reticle" class="reticle hidden">
+                <div class="reticle-crosshair">
+                    <div class="reticle-line horizontal"></div>
+                    <div class="reticle-line vertical"></div>
+                    <div class="reticle-center"></div>
+                </div>
+                <div class="reticle-text">Click to place hotspot</div>
+            </div>
+                
+            </a-scene>
             
             <!-- Navigation Controls -->
             <div class="navigation-controls">
@@ -42,9 +90,6 @@
                     <span id="current-image-num">1</span> / <span id="total-images">0</span>
                 </div>
             </div>
-            
-            <!-- Hotspot Overlay -->
-            <div id="hotspot-overlay"></div>
             
             <!-- Dev Mode Controls -->
             <div id="dev-controls" class="dev-controls hidden">
@@ -59,9 +104,12 @@
                             <option value="info">Information Only</option>
                             <option value="image">Navigate to Image</option>
                         </select>
-                        <select id="hotspot-target-image" style="display: none;">
-                            <option value="">Select target image...</option>
-                        </select>
+                        <div id="hotspot-target-image-container" style="display: none;">
+                            <label>Select target image:</label>
+                            <div id="image-preview-grid" class="image-preview-grid">
+                                <!-- Image previews will be loaded here -->
+                            </div>
+                        </div>
                     </div>
                     <button id="save-hotspot" class="btn btn-primary">Save Hotspot</button>
                     <button id="cancel-hotspot" class="btn btn-secondary">Cancel</button>
@@ -98,32 +146,6 @@
                 <div id="progress-text" class="progress-text">0%</div>
             </div>
             <div id="loading-details" class="loading-details"></div>
-        </div>
-
-        <!-- Instructions Overlay -->
-        <div id="instructions-overlay" class="instructions-overlay">
-            <div class="instructions-content">
-                <h3>Welcome to the 360° Virtual Tour!</h3>
-                <div class="instructions-grid">
-                    <div class="instruction-item">
-                        <strong>🖱️ Mouse Controls:</strong>
-                        <p>Drag to look around • Scroll to zoom</p>
-                    </div>
-                    <div class="instruction-item">
-                        <strong>⌨️ Keyboard:</strong>
-                        <p>Arrow keys or Spacebar to navigate • H for help</p>
-                    </div>
-                    <div class="instruction-item">
-                        <strong>🥽 VR Support:</strong>
-                        <p>Click "VR Mode" if you have VR equipment</p>
-                    </div>
-                    <div class="instruction-item">
-                        <strong>📍 Hotspots:</strong>
-                        <p>Click the + icons to view information</p>
-                    </div>
-                </div>
-                <button id="close-instructions" class="btn btn-primary">Got it!</button>
-            </div>
         </div>
     </div>
 
