@@ -168,7 +168,7 @@ class VirtualTourApp {
             
             const timeout = setTimeout(() => {
                 reject(new Error(`Timeout loading ${fileName}`));
-            }, 10000);
+            }, 120000);
             
             img.onload = () => {
                 clearTimeout(timeout);
