@@ -413,9 +413,10 @@ class VirtualTourApp {
         };
         
         // Calculate 3D position in front of camera using proper spherical coordinates
+        // In A-Frame, camera forward is along negative Z-axis
         const x = cameraPosition.x + Math.sin(radians.y) * Math.cos(radians.x) * distance;
         const y = cameraPosition.y - Math.sin(radians.x) * distance;
-        const z = cameraPosition.z + Math.cos(radians.y) * Math.cos(radians.x) * distance;
+        const z = cameraPosition.z - Math.cos(radians.y) * Math.cos(radians.x) * distance;
         
         const hotspotPosition = {
             x: x,
