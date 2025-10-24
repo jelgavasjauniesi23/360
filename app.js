@@ -350,28 +350,148 @@ class VirtualTourApp {
         this.setupAFrame();
     }
 
-    toggleDevMode() {
-        this.devMode = !this.devMode;
-        const devControls = document.getElementById('dev-controls');
-        const btn = document.getElementById('devModeBtn');
-        const reticle = document.getElementById('reticle');
-        
-        if (this.devMode) {
-            devControls.classList.remove('hidden');
-            reticle.classList.remove('hidden');
-            btn.textContent = 'Exit Dev Mode';
-            btn.classList.add('btn-primary');
-            btn.classList.remove('btn-secondary');
-            this.setupDevModeClick();
-        } else {
-            devControls.classList.add('hidden');
-            reticle.classList.add('hidden');
-            btn.textContent = 'Dev Mode';
-            btn.classList.add('btn-secondary');
-            btn.classList.remove('btn-primary');
-            this.removeDevModeClick();
-        }
+toggleDevMode() {
+    this.devMode = !this.devMode;
+    const devControls = document.getElementById('dev-controls');
+    const btn = document.getElementById('devModeBtn');
+    const reticle = document.getElementById('reticle');
+    
+    if (this.devMode) {
+        devControls.classList.remove('hidden');
+        reticle.classList.remove('hidden');
+        btn.textContent = 'Exit Dev Mode';
+        btn.classList.add('btn-primary');
+        btn.classList.remove('btn-secondary');
+        this.setupDevModeClick();
+        this.createTestSphere(); // Add test sphere
+        this.startTestSphereUpdate(); // Start updating position
+    } else {
+        devControls.classList.add('hidden');
+        reticle.classList.add('hidden');
+        btn.textContent = 'Dev Mode';
+        btn.classList.add('btn-secondary');
+        btn.classList.remove('btn-primary');
+        this.removeDevModeClick();
+        this.removeTestSphere(); // Remove test sphere
+        this.stopTestSphereUpdate(); // Stop updating
     }
+}
+
+createTestSphere() {
+    // Remove existing test sphere if any
+    this.removeTestSphere();
+    
+    const scene = document.querySelector('#aframe-scene');
+    if (!scene) return;
+    
+    // Create test sphere
+    const testSphere = document.createElement('a-sphere');
+    testSphere.setAttribute('id', 'test-sphere');
+    testSphere.setAttribute('radius', '0.3');
+    testSphere.setAttribute('color', '#ff0000');
+    testSphere.setAttribute('opacity', '0.7');
+    testSphere.setAttribute('position', '0 0 -3');
+    
+    scene.appendChild(testSphere);
+    console.log('Test sphere created');
+}
+
+removeTestSphere() {
+    const testSphere = document.querySelector('#test-sphere');
+    if (testSphere) {
+        testSphere.remove();
+        console.log('Test sphere removed');
+    }
+}
+
+startTestSphereUpdate() {
+    // Update test sphere position every frame
+    this.testSphereInterval = setInterval(() => {
+        this.updateTestSpherePosition();
+    }, 100); // Update every 100ms
+}
+
+stopTestSphereUpdate() {
+    if (this.testSphereInterval) {
+        clearInterval(this.testSphereInterval);
+        this.testSphereInterval = null;
+    }
+}
+
+updateTestSpherePosition() {
+    const testSphere = document.querySelector('#test-sphere');
+    const camera = document.querySelector('#main-camera');
+    
+    if (!testSphere || !camera) return;
+    
+    // Get camera's Three.js object
+    const camera3D = camera.object3D;
+    const cameraWorldPos = new THREE.Vector3();
+    camera3D.getWorldPosition(cameraWorldPos);
+    
+    // Get forward direction
+    const direction = new THREE.Vector3(0, 0, -1);
+    direction.applyQuaternion(camera3D.quaternion);
+    
+    // Calculate position at fixed distance
+    const distance = 3;
+    const spherePos = cameraWorldPos.clone().add(direction.multiplyScalar(distance));
+    
+    // Update test sphere position
+    testSphere.setAttribute('position', `${spherePos.x} ${spherePos.y} ${spherePos.z}`);
+    
+    // Log position
+    console.log('Test sphere position:', {
+        x: spherePos.x.toFixed(3),
+        y: spherePos.y.toFixed(3),
+        z: spherePos.z.toFixed(3)
+    });
+}
+
+handleSceneClick(event) {
+    console.log('handleSceneClick called, devMode:', this.devMode);
+    if (!this.devMode) return;
+   
+    // Check if click was on a hotspot
+    if (event.target.classList.contains('hotspot')) {
+        return;
+    }
+   
+    // Get camera's Three.js object
+    const camera = document.querySelector('#main-camera');
+    const camera3D = camera.object3D;
+    const cameraWorldPos = new THREE.Vector3();
+    camera3D.getWorldPosition(cameraWorldPos);
+    
+    // Get forward direction
+    const direction = new THREE.Vector3(0, 0, -1);
+    direction.applyQuaternion(camera3D.quaternion);
+    
+    // Calculate position at fixed distance (same as test sphere)
+    const distance = 3;
+    const hotspotPos = cameraWorldPos.clone().add(direction.multiplyScalar(distance));
+    
+    const hotspotPosition = {
+        x: hotspotPos.x,
+        y: hotspotPos.y,
+        z: hotspotPos.z,
+        aframe: `${hotspotPos.x} ${hotspotPos.y} ${hotspotPos.z}`
+    };
+   
+    console.log('Creating hotspot at position:', hotspotPosition);
+    console.log('Camera world position:', {
+        x: cameraWorldPos.x.toFixed(3),
+        y: cameraWorldPos.y.toFixed(3),
+        z: cameraWorldPos.z.toFixed(3)
+    });
+    console.log('Camera direction:', {
+        x: direction.x.toFixed(3),
+        y: direction.y.toFixed(3),
+        z: direction.z.toFixed(3)
+    });
+    
+    this.createHotspotAtPosition(hotspotPosition);
+}
 
     setupDevModeClick() {
         const scene = document.querySelector('#aframe-scene');
@@ -386,51 +506,6 @@ class VirtualTourApp {
         if (scene && this.boundHandleSceneClick) {
             scene.removeEventListener('click', this.boundHandleSceneClick);
         }
-    }
-
-    handleSceneClick(event) {
-        console.log('handleSceneClick called, devMode:', this.devMode);
-        if (!this.devMode) return;
-        
-        // Check if click was on a hotspot
-        if (event.target.classList.contains('hotspot')) {
-            return;
-        }
-        
-        // Get camera position and rotation
-        const camera = document.querySelector('#main-camera');
-        const cameraPosition = camera.getAttribute('position');
-        const cameraRotation = camera.getAttribute('rotation');
-        
-        console.log('Camera position:', cameraPosition);
-        console.log('Camera rotation:', cameraRotation);
-        
-        // Calculate position in front of camera based on reticle (center of screen)
-        const distance = 3; // Closer to camera for better visibility
-        const radians = {
-            x: cameraRotation.x * Math.PI / 180,
-            y: cameraRotation.y * Math.PI / 180
-        };
-        
-        // Calculate 3D position in front of camera using proper spherical coordinates
-        // In A-Frame, camera forward is along negative Z-axis
-        const x = cameraPosition.x + Math.sin(radians.y) * Math.cos(radians.x) * distance;
-        const y = cameraPosition.y - Math.sin(radians.x) * distance;
-        const z = cameraPosition.z - Math.cos(radians.y) * Math.cos(radians.x) * distance;
-        
-        const hotspotPosition = {
-            x: x,
-            y: y,
-            z: z,
-            aframe: `${x} ${y} ${z}`
-        };
-        
-        console.log('Calculated hotspot position:', hotspotPosition);
-        console.log('Camera position:', cameraPosition);
-        console.log('Camera rotation:', cameraRotation);
-        console.log('Distance:', distance);
-        
-        this.createHotspotAtPosition(hotspotPosition);
     }
 
     createHotspotAtPosition(position) {
