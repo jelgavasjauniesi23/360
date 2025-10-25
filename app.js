@@ -362,180 +362,59 @@ toggleDevMode() {
         btn.textContent = 'Exit Dev Mode';
         btn.classList.add('btn-primary');
         btn.classList.remove('btn-secondary');
-        this.setupDevModeClick();
-        this.createTestSphere(); // Add test sphere
-        this.startTestSphereUpdate(); // Start updating position
+        this.createHotspotAtPosition();
+
+        // Reset form state
+        this.selectedTargetImageIndex = undefined;
+        const targetImageContainer = document.getElementById('hotspot-target-image-container');
+        if (targetImageContainer) {
+            targetImageContainer.style.display = 'block';
+        }  
+        // Populate the image preview grid
+        this.populateImagePreviewGrid();
+        const form = document.getElementById('dev-controls');
+        console.log('Form element:', form);
+        form.style.display = 'block';
     } else {
         devControls.classList.add('hidden');
         reticle.classList.add('hidden');
         btn.textContent = 'Dev Mode';
         btn.classList.add('btn-secondary');
         btn.classList.remove('btn-primary');
-        this.removeDevModeClick();
-        this.removeTestSphere(); // Remove test sphere
-        this.stopTestSphereUpdate(); // Stop updating
     }
 }
-
-createTestSphere() {
-    // Remove existing test sphere if any
-    this.removeTestSphere();
-    
-    const scene = document.querySelector('#aframe-scene');
-    if (!scene) return;
-    
-    // Create test sphere
-    const testSphere = document.createElement('a-sphere');
-    testSphere.setAttribute('id', 'test-sphere');
-    testSphere.setAttribute('radius', '0.3');
-    testSphere.setAttribute('color', '#ff0000');
-    testSphere.setAttribute('opacity', '0.7');
-    testSphere.setAttribute('position', '0 0 -3');
-    
-    scene.appendChild(testSphere);
-    console.log('Test sphere created');
-}
-
-removeTestSphere() {
-    const testSphere = document.querySelector('#test-sphere');
-    if (testSphere) {
-        testSphere.remove();
-        console.log('Test sphere removed');
-    }
-}
-
-startTestSphereUpdate() {
-    // Update test sphere position every frame
-    this.testSphereInterval = setInterval(() => {
-        this.updateTestSpherePosition();
-    }, 100); // Update every 100ms
-}
-
-stopTestSphereUpdate() {
-    if (this.testSphereInterval) {
-        clearInterval(this.testSphereInterval);
-        this.testSphereInterval = null;
-    }
-}
-
-updateTestSpherePosition() {
-    const testSphere = document.querySelector('#test-sphere');
-    const camera = document.querySelector('#main-camera');
-    
-    if (!testSphere || !camera) return;
-    
-    // Get camera's Three.js object
-    const camera3D = camera.object3D;
-    const cameraWorldPos = new THREE.Vector3();
-    camera3D.getWorldPosition(cameraWorldPos);
-    
-    // Get forward direction
-    const direction = new THREE.Vector3(0, 0, -1);
-    direction.applyQuaternion(camera3D.quaternion);
-    
-    // Calculate position at fixed distance
-    const distance = 3;
-    const spherePos = cameraWorldPos.clone().add(direction.multiplyScalar(distance));
-    
-    // Update test sphere position
-    testSphere.setAttribute('position', `${spherePos.x} ${spherePos.y} ${spherePos.z}`);
-    
-    // Log position
-    console.log('Test sphere position:', {
-        x: spherePos.x.toFixed(3),
-        y: spherePos.y.toFixed(3),
-        z: spherePos.z.toFixed(3)
-    });
-}
-
-handleSceneClick(event) {
-    console.log('handleSceneClick called, devMode:', this.devMode);
-    if (!this.devMode) return;
-   
-    // Check if click was on a hotspot
-    if (event.target.classList.contains('hotspot')) {
-        return;
-    }
-   
-    // Get camera's Three.js object
-    const camera = document.querySelector('#main-camera');
-    const camera3D = camera.object3D;
-    const cameraWorldPos = new THREE.Vector3();
-    camera3D.getWorldPosition(cameraWorldPos);
-    
-    // Get forward direction
-    const direction = new THREE.Vector3(0, 0, -1);
-    direction.applyQuaternion(camera3D.quaternion);
-    
-    // Calculate position at fixed distance (same as test sphere)
-    const distance = 3;
-    const hotspotPos = cameraWorldPos.clone().add(direction.multiplyScalar(distance));
-    
-    const hotspotPosition = {
-        x: hotspotPos.x,
-        y: hotspotPos.y,
-        z: hotspotPos.z,
-        aframe: `${hotspotPos.x} ${hotspotPos.y} ${hotspotPos.z}`
-    };
-   
-    console.log('Creating hotspot at position:', hotspotPosition);
-    console.log('Camera world position:', {
-        x: cameraWorldPos.x.toFixed(3),
-        y: cameraWorldPos.y.toFixed(3),
-        z: cameraWorldPos.z.toFixed(3)
-    });
-    console.log('Camera direction:', {
-        x: direction.x.toFixed(3),
-        y: direction.y.toFixed(3),
-        z: direction.z.toFixed(3)
-    });
-    
-    this.createHotspotAtPosition(hotspotPosition);
-}
-
-    setupDevModeClick() {
-        const scene = document.querySelector('#aframe-scene');
-        if (scene) {
-            this.boundHandleSceneClick = this.handleSceneClick.bind(this);
-            scene.addEventListener('click', this.boundHandleSceneClick);
-        }
-    }
-
-    removeDevModeClick() {
-        const scene = document.querySelector('#aframe-scene');
-        if (scene && this.boundHandleSceneClick) {
-            scene.removeEventListener('click', this.boundHandleSceneClick);
-        }
-    }
-
-    createHotspotAtPosition(position) {
-        console.log('createHotspotAtPosition called with position:', position);
-        // Show hotspot form
-        const form = document.getElementById('dev-controls');
-        console.log('Form element:', form);
-        form.style.display = 'block';
+    createHotspotAtPosition() {
+        const camera = document.querySelector('#main-camera');
         
-        // Store the position for saving
-        this.tempHotspotPosition = position;
+        if (!camera) return;
         
-        // Reset form state
-        this.selectedTargetImageIndex = undefined;
-        document.getElementById('hotspot-link-type').value = 'image';
-        document.getElementById('hotspot-target-image-container').style.display = 'block';
-        this.populateImagePreviewGrid();
-    }
+        // Get camera's Three.js object
+        const camera3D = camera.object3D;
+        const cameraWorldPos = new THREE.Vector3();
+        camera3D.getWorldPosition(cameraWorldPos);
+        
+        // Get forward direction
+        const direction = new THREE.Vector3(0, 0.65, -5);
+        direction.applyQuaternion(camera3D.quaternion);
+        
+        // Calculate position at fixed distance
+        const distance = 1;
+        const spherePos = cameraWorldPos.clone().add(direction.multiplyScalar(distance));
+        
+        // Update test sphere position
+        this.tempHotspotPosition = {
+            x: spherePos.x,
+            y: spherePos.y,
+            z: spherePos.z,
+            aframe: `${spherePos.x} ${spherePos.y} ${spherePos.z}`
+    } 
+}
 
     saveHotspot() {
+        this.createHotspotAtPosition();
         console.log('saveHotspot called');
-        const title = document.getElementById('hotspot-title').value;
-        const description = document.getElementById('hotspot-description').value;
         
-        console.log('Hotspot data:', { title, description, position: this.tempHotspotPosition });
-        
-        if (!title.trim()) {
-            alert('Please enter a hotspot title');
-            return;
-        }
+        console.log('Hotspot data:', { position: this.tempHotspotPosition });
         
         if (this.selectedTargetImageIndex === undefined) {
             alert('Please select a target image for navigation');
@@ -544,8 +423,6 @@ handleSceneClick(event) {
         
         const hotspot = {
             id: Date.now().toString(),
-            title: title,
-            description: description,
             position: this.tempHotspotPosition,
             imageIndex: this.currentImageIndex,
             linkType: 'image',
@@ -566,9 +443,6 @@ handleSceneClick(event) {
         document.getElementById('dev-controls').style.display = 'none';
         
         // Clear form
-        document.getElementById('hotspot-title').value = '';
-        document.getElementById('hotspot-description').value = '';
-        document.getElementById('hotspot-link-type').value = 'image';
         document.getElementById('hotspot-target-image-container').style.display = 'block';
         this.selectedTargetImageIndex = undefined;
         
@@ -581,13 +455,10 @@ handleSceneClick(event) {
         this.saveHotspotsToStorage();
         
         // Show success message
-        this.showHotspotCreatedMessage(hotspot.title);
+        this.showHotspotCreatedMessage();
     }
 
     cancelHotspot() {
-        document.getElementById('hotspot-title').value = '';
-        document.getElementById('hotspot-description').value = '';
-        document.getElementById('hotspot-link-type').value = 'image';
         document.getElementById('hotspot-target-image-container').style.display = 'block';
         this.tempHotspotPosition = null;
         this.selectedTargetImageIndex = undefined;
@@ -614,9 +485,14 @@ handleSceneClick(event) {
         // Only show hotspots for current image
         const currentHotspots = this.hotspots.filter(h => h.imageIndex === this.currentImageIndex);
         console.log('Current image hotspots:', currentHotspots.length);
-        console.log('All hotspots:', this.hotspots.map(h => ({ id: h.id, imageIndex: h.imageIndex, title: h.title })));
+        console.log('All hotspots:', this.hotspots.map(h => ({ id: h.id, imageIndex: h.imageIndex})));
         
-        currentHotspots.forEach(hotspot => {
+            currentHotspots.forEach(hotspot => {
+            if (!hotspot.position || !hotspot.position.aframe) {
+            console.warn('Skipping hotspot with invalid position:', hotspot);
+            return;
+        }
+    
             const hotspotElement = document.createElement('a-sphere');
             hotspotElement.setAttribute('position', hotspot.position.aframe);
             hotspotElement.setAttribute('radius', hotspot.radius || '0.5');
@@ -811,70 +687,74 @@ handleSceneClick(event) {
         this.updatePhotoOrdering();
     }
 
-    savePhotoOrder() {
-        localStorage.setItem(`photoOrder_${this.currentFolder}`, JSON.stringify(this.photoOrder.map(p => p.name)));
-        alert('Photo order saved!');
+    async savePhotoOrder() {
+        try {
+            const orderData = this.photoOrder.map(p => p.name);
+            const result = await window.storage.set(
+                `photoOrder:${this.currentFolder}`, 
+                JSON.stringify(orderData),
+                false
+            );
+            
+            if (result) {
+                alert('Photo order saved!');
+            } else {
+                alert('Failed to save photo order');
+            }
+        } catch (error) {
+            console.error('Error saving photo order:', error);
+            alert('Error saving photo order: ' + error.message);
+        }
     }
+
 
     async loadHotspots(folderName) {
         try {
-            const response = await fetch(`/api/hotspots/${folderName}`);
-            if (response.ok) {
-                const data = await response.json();
-                this.hotspots = data.hotspots || [];
-                console.log(`Loaded ${this.hotspots.length} hotspots from JSON file for ${folderName}`);
+            const result = await window.storage.get(`hotspots:${folderName}`, false);
+            
+            if (result && result.value) {
+                this.hotspots = JSON.parse(result.value);
+                console.log(`Loaded ${this.hotspots.length} hotspots from storage for ${folderName}`);
             } else {
-                console.log('No JSON file found, trying localStorage fallback');
-                // Fallback to localStorage
-                const saved = localStorage.getItem(`hotspots_${folderName}`);
-                if (saved) {
-                    this.hotspots = JSON.parse(saved);
-                }
+                this.hotspots = [];
+                console.log(`No hotspots found for ${folderName}, starting fresh`);
             }
         } catch (error) {
-            console.error('Error loading hotspots from JSON file:', error);
-            // Fallback to localStorage
-            const saved = localStorage.getItem(`hotspots_${folderName}`);
-            if (saved) {
-                this.hotspots = JSON.parse(saved);
-            }
+            console.log('No existing hotspots found (this is normal for new folders):', error.message);
+            this.hotspots = [];
         }
     }
 
     async saveHotspotsToStorage() {
         try {
-            const response = await fetch(`/api/hotspots/${this.currentFolder}`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    hotspots: this.hotspots,
-                    folder: this.currentFolder,
-                    lastUpdated: new Date().toISOString()
-                })
-            });
+            const data = {
+                hotspots: this.hotspots,
+                folder: this.currentFolder,
+                lastUpdated: new Date().toISOString()
+            };
             
-            if (response.ok) {
-                const result = await response.json();
-                console.log('Hotspots saved to JSON file:', result.message);
+            const result = await window.storage.set(
+                `hotspots:${this.currentFolder}`, 
+                JSON.stringify(data),
+                false
+            );
+            
+            if (result) {
+                console.log('Hotspots saved to storage successfully');
             } else {
-                console.error('Failed to save hotspots to JSON file');
-                // Fallback to localStorage
-                localStorage.setItem(`hotspots_${this.currentFolder}`, JSON.stringify(this.hotspots));
+                console.error('Failed to save hotspots to storage');
             }
         } catch (error) {
-            console.error('Error saving hotspots to JSON file:', error);
-            // Fallback to localStorage
-            localStorage.setItem(`hotspots_${this.currentFolder}`, JSON.stringify(this.hotspots));
+            console.error('Error saving hotspots to storage:', error);
+            alert('Error saving hotspots: ' + error.message);
         }
     }
 
-    showHotspotCreatedMessage(title) {
+    showHotspotCreatedMessage() {
         // Create temporary success message
         const messageDiv = document.createElement('div');
         messageDiv.className = 'hotspot-success-message';
-        messageDiv.textContent = `Hotspot "${title}" created successfully!`;
+        messageDiv.textContent = `Hotspot created successfully!`;
         messageDiv.style.cssText = `
             position: fixed;
             top: 20px;
@@ -946,8 +826,6 @@ handleSceneClick(event) {
             font-size: 12px;
             color: #666;
         `;
-        infoDiv.textContent = `"${hotspot.title}"`;
-        menu.appendChild(infoDiv);
 
         // Delete button
         const deleteBtn = document.createElement('button');
@@ -982,8 +860,8 @@ handleSceneClick(event) {
 
         const sizeSlider = document.createElement('input');
         sizeSlider.type = 'range';
-        sizeSlider.min = '0.2';
-        sizeSlider.max = '2.0';
+        sizeSlider.min = '0.1';
+        sizeSlider.max = '1';
         sizeSlider.step = '0.1';
         sizeSlider.value = hotspot.radius || '0.5';
         sizeSlider.style.cssText = 'width: 100%;';
