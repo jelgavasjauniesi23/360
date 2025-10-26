@@ -176,50 +176,42 @@ class VirtualTourApp {
         this.showLoading();
         this.images = [];
         this.hotspots = [];
-        
+
         // Load hotspots from localStorage for this folder
         this.loadHotspotsFromStorage(folderName);
-        
+
         try {
             const imageFiles = this.getImageFilesForFolder(folderName);
             this.updateLoadingText(`Loading ${imageFiles.length} images from ${folderName}...`);
             this.updateProgress(0, imageFiles.length);
-            
-            const loadedImages = await this.loadImagesWithProgress(imageFiles, folderName);
-            
+
+            // Load current folder’s images in batches of 3
+            const loadedImages = await this.loadImagesInBatches(imageFiles, folderName, 3);
             this.images = loadedImages;
-            
-            // Apply saved photo order from localStorage if available
+
+            // Apply saved photo order
             const savedOrder = this.loadPhotoOrderFromStorage(folderName);
-            if (savedOrder && savedOrder.length > 0) {
-                // Create a new array based on the saved order
+            if (savedOrder?.length) {
                 const orderedImages = [];
                 savedOrder.forEach(imageName => {
                     const foundImage = this.images.find(img => img.name === imageName);
-                    if (foundImage) {
-                        orderedImages.push(foundImage);
-                    }
+                    if (foundImage) orderedImages.push(foundImage);
                 });
-                
-                // Add any images that might not be in the saved order
                 this.images.forEach(img => {
-                    if (!savedOrder.includes(img.name)) {
-                        orderedImages.push(img);
-                    }
+                    if (!savedOrder.includes(img.name)) orderedImages.push(img);
                 });
-                
                 this.images = orderedImages;
             }
-            
+
             this.photoOrder = [...this.images];
-            this.currentImageIndex = 0;            
+            this.currentImageIndex = 0;
             this.updateLoadingText('Images loaded successfully!');
             this.updateProgress(imageFiles.length, imageFiles.length);
-            
-            setTimeout(() => {
-                this.hideLoading();
-            }, 500);
-            
+
+            // Start background loading of other folders
+            this.preloadOtherFolders(folderName);
+
+            setTimeout(() => this.hideLoading(), 500);
         } catch (error) {
             console.error('Error loading images:', error);
             this.updateLoadingText('Error loading images. Please check if the folder exists.');
@@ -230,44 +222,82 @@ class VirtualTourApp {
             }, 2000);
         }
     }
-
-    async loadImagesWithProgress(imageFiles, folderName) {
+    
+    async loadImagesInBatches(imageFiles, folderName, batchSize = 3) {
         const loadedImages = [];
         const totalImages = imageFiles.length;
-        
-        for (let i = 0; i < imageFiles.length; i++) {
-            const file = imageFiles[i];
-            const imagePath = `./${folderName}/${file}`;
-            
-            try {
-                this.updateLoadingText(`Loading ${file}...`);
-                this.updateLoadingDetails(`${i + 1} of ${totalImages} images`);
-                
-                const img = await this.loadSingleImage(imagePath, file);
-                loadedImages.push({
-                    name: file,
-                    element: img,
-                    path: imagePath,
-                    loaded: true
-                });
-                
-                this.updateProgress(i + 1, totalImages);
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-            } catch (error) {
-                console.warn(`Failed to load ${file}:`, error);
-                loadedImages.push({
-                    name: file,
-                    element: null,
-                    path: imagePath,
-                    loaded: false,
-                    error: error.message
-                });
-            }
+
+        for (let i = 0; i < totalImages; i += batchSize) {
+            const batch = imageFiles.slice(i, i + batchSize);
+            this.updateLoadingText(`Loading ${batch.join(', ')}...`);
+            this.updateLoadingDetails(`${Math.min(i + batchSize, totalImages)} of ${totalImages} images`);
+
+            // Load up to 3 concurrently
+            const results = await Promise.allSettled(
+                batch.map(file => this.loadSingleImageWithCache(`./${folderName}/${file}`, file))
+            );
+
+            results.forEach((res, idx) => {
+                const file = batch[idx];
+                if (res.status === 'fulfilled') {
+                    loadedImages.push({
+                        name: file,
+                        element: res.value,
+                        path: `./${folderName}/${file}`,
+                        loaded: true
+                    });
+                } else {
+                    console.warn(`Failed to load ${file}:`, res.reason);
+                    loadedImages.push({
+                        name: file,
+                        element: null,
+                        path: `./${folderName}/${file}`,
+                        loaded: false,
+                        error: res.reason?.message || 'Load failed'
+                    });
+                }
+            });
+
+            this.updateProgress(Math.min(i + batchSize, totalImages), totalImages);
+            await new Promise(r => setTimeout(r, 100)); // slight pause
         }
-        
+
         return loadedImages;
     }
+
+    async loadSingleImageWithCache(imagePath, fileName) {
+        if (this.imageCache.has(imagePath)) {
+            return this.imageCache.get(imagePath);
+        }
+
+        const img = await this.loadSingleImage(imagePath, fileName);
+        this.imageCache.set(imagePath, img);
+        return img;
+    }
+
+    async preloadOtherFolders(currentFolder) {
+        const allFolders = Object.keys(this.getImageFilesForFolder('')); // we'll tweak this next
+        const folders = ['pakapiens', 'pietura', 'spaktele'];
+        const otherFolders = folders.filter(f => f !== currentFolder);
+
+        for (const folder of otherFolders) {
+            if (this.imageCache.has(`folder:${folder}`)) {
+                console.log(`Skipping already preloaded folder ${folder}`);
+                continue;
+            }
+
+            console.log(`Preloading folder ${folder} in background...`);
+            const imageFiles = this.getImageFilesForFolder(folder);
+            await Promise.allSettled(
+                imageFiles.map(file =>
+                    this.loadSingleImageWithCache(`./${folder}/${file}`, file)
+                )
+            );
+            this.imageCache.set(`folder:${folder}`, true);
+            console.log(`Finished preloading folder ${folder}`);
+        }
+    }
+
 
     loadSingleImage(imagePath, fileName) {
         return new Promise((resolve, reject) => {
