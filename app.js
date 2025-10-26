@@ -5,6 +5,7 @@ class VirtualTourApp {
         this.sky = null;
         this.currentFolder = 'pakapiens';
         this.currentImageIndex = 0;
+        this.currentImageName = '';
         this.images = [];
         this.hotspots = [];
         this.devMode = false;
@@ -102,6 +103,29 @@ class VirtualTourApp {
             const loadedImages = await this.loadImagesWithProgress(imageFiles, folderName);
             
             this.images = loadedImages;
+            
+            // Apply saved photo order from localStorage if available
+            const savedOrder = this.loadPhotoOrderFromStorage(folderName);
+            if (savedOrder && savedOrder.length > 0) {
+                // Create a new array based on the saved order
+                const orderedImages = [];
+                savedOrder.forEach(imageName => {
+                    const foundImage = this.images.find(img => img.name === imageName);
+                    if (foundImage) {
+                        orderedImages.push(foundImage);
+                    }
+                });
+                
+                // Add any images that might not be in the saved order
+                this.images.forEach(img => {
+                    if (!savedOrder.includes(img.name)) {
+                        orderedImages.push(img);
+                    }
+                });
+                
+                this.images = orderedImages;
+            }
+            
             this.photoOrder = [...this.images];
             this.currentImageIndex = 0;            
             this.updateLoadingText('Images loaded successfully!');
@@ -258,6 +282,9 @@ class VirtualTourApp {
         const currentImage = this.images[this.currentImageIndex];
         console.log('Current image:', currentImage);
         
+        // Update the current image name
+        this.currentImageName = currentImage.name;
+        
         if (!currentImage.loaded) {
             console.warn(`Image ${currentImage.name} failed to load:`, currentImage.error);
             this.showImageError(currentImage);
@@ -289,6 +316,18 @@ class VirtualTourApp {
         
         this.currentImageIndex = (this.currentImageIndex - 1 + this.images.length) % this.images.length;
         this.loadCurrentImage();
+    }
+
+    // New function to navigate to a specific image by name
+    navigateToImageByName(imageName) {
+        const imageIndex = this.images.findIndex(img => img.name === imageName);
+        if (imageIndex !== -1) {
+            this.currentImageIndex = imageIndex;
+            this.currentImageName = imageName;
+            this.loadCurrentImage();
+            return true;
+        }
+        return false;
     }
 
     updateImageCounter() {
@@ -354,10 +393,12 @@ class VirtualTourApp {
         const devControls = document.getElementById('dev-controls');
         const btn = document.getElementById('devModeBtn');
         const reticle = document.getElementById('reticle');
+        const photoOrdering = document.getElementById('photo-ordering');
         
         if (this.devMode) {
             devControls.classList.remove('hidden');
             reticle.classList.remove('hidden');
+            photoOrdering.classList.remove('hidden');
             btn.textContent = 'Exit Dev Mode';
             btn.classList.add('btn-primary');
             btn.classList.remove('btn-secondary');
@@ -377,6 +418,7 @@ class VirtualTourApp {
         } else {
             devControls.classList.add('hidden');
             reticle.classList.add('hidden');
+            photoOrdering.classList.add('hidden');
             btn.textContent = 'Dev Mode';
             btn.classList.add('btn-secondary');
             btn.classList.remove('btn-primary');
@@ -421,26 +463,31 @@ class VirtualTourApp {
             return;
         }
         
+        // Get the actual image name instead of using index
+        const currentImageName = this.images[this.currentImageIndex].name;
+        const targetImageName = this.images[this.selectedTargetImageIndex].name;
+        
         const hotspot = {
             id: Date.now().toString(),
             position: this.tempHotspotPosition,
             imageIndex: this.currentImageIndex,
+            imageName: currentImageName, // Store image name for better tracking
             linkType: 'image',
             targetImageIndex: this.selectedTargetImageIndex,
-            createdAt: new Date().toISOString()
+            targetImageName: targetImageName, // Store target image name for better tracking
+            createdAt: new Date().toISOString(),
+            radius: "0.5"
         };
         
         this.hotspots.push(hotspot);
         console.log('Added hotspot, total hotspots:', this.hotspots.length);
         console.log('Current image index:', this.currentImageIndex);
+        console.log('Current image name:', currentImageName);
         
         // Small delay to ensure A-Frame is ready
         setTimeout(() => {
             this.renderHotspots();
         }, 100);
-        
-        // Hide dev controls after saving
-        document.getElementById('dev-controls').style.display = 'none';
         
         // Clear form
         document.getElementById('hotspot-target-image-container').style.display = 'block';
@@ -482,10 +529,17 @@ class VirtualTourApp {
             hotspot.remove();
         });
         
-        // Only show hotspots for current image
-        const currentHotspots = this.hotspots.filter(h => h.imageIndex === this.currentImageIndex);
+        // Get current image name
+        const currentImageName = this.currentImageName;
+        
+        // Only show hotspots for current image - prioritize name-based matching
+        const currentHotspots = this.hotspots.filter(h => {
+            return h.imageName === currentImageName || 
+                  (!h.imageName && h.imageIndex === this.currentImageIndex);
+        });
+        
         console.log('Current image hotspots:', currentHotspots.length);
-        console.log('All hotspots:', this.hotspots.map(h => ({ id: h.id, imageIndex: h.imageIndex})));
+        console.log('Current image name:', currentImageName);
         
         currentHotspots.forEach(hotspot => {
             if (!hotspot.position || !hotspot.position.aframe) {
@@ -495,7 +549,7 @@ class VirtualTourApp {
     
             const hotspotElement = document.createElement('a-sphere');
             hotspotElement.setAttribute('position', hotspot.position.aframe);
-            hotspotElement.setAttribute('radius', hotspot.radius || '0.5');
+            hotspotElement.setAttribute('radius', hotspot.radius / 2 || '0.5');
             hotspotElement.setAttribute('color', '#667eea');
             hotspotElement.setAttribute('opacity', '0.8');
             hotspotElement.setAttribute('cursor-listener', '');
@@ -540,8 +594,15 @@ class VirtualTourApp {
         const hotspot = this.hotspots.find(h => h.id === hotspotId);
         if (!hotspot) return;
         
-        // All hotspots now navigate to target image
-        if (hotspot.targetImageIndex !== null) {
+        // Navigate using targetImageName if available
+        if (hotspot.targetImageName) {
+            if (this.navigateToImageByName(hotspot.targetImageName)) {
+                return;
+            }
+        }
+        
+        // Fall back to index-based navigation if name-based fails or isn't available
+        if (hotspot.targetImageIndex !== null && hotspot.targetImageIndex < this.images.length) {
             this.currentImageIndex = hotspot.targetImageIndex;
             this.loadCurrentImage();
         }
@@ -820,6 +881,25 @@ class VirtualTourApp {
         } catch (error) {
             console.error('Error saving hotspots to storage:', error);
             alert('Error saving hotspots: ' + error.message);
+        }
+    }
+
+    loadPhotoOrderFromStorage(folderName) {
+        try {
+            const key = `photoOrder:${folderName}`;
+            const storedData = localStorage.getItem(key);
+            
+            if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                console.log(`Loaded photo order for ${folderName}:`, parsedData);
+                return parsedData;
+            } else {
+                console.log(`No photo order found for ${folderName}`);
+                return [];
+            }
+        } catch (error) {
+            console.error('Error loading photo order from storage:', error);
+            return [];
         }
     }
 
