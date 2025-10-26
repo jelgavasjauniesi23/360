@@ -16,15 +16,11 @@ class VirtualTourApp {
     }
 
     async init() {
-        console.log('Initializing Virtual Tour App...');
+        await this.loadDataFromJson();
         this.setupEventListeners();
-        console.log('Event listeners setup complete');
         await this.loadFolderImages('pakapiens');
-        console.log('Folder images loaded');
         this.setupAFrame();
-        console.log('A-Frame setup complete');
         this.hideLoading();
-        console.log('Loading hidden');
     }
 
     setupEventListeners() {
@@ -50,13 +46,15 @@ class VirtualTourApp {
             this.cancelHotspot();
         });
 
-
         // Photo ordering
         document.getElementById('save-order').addEventListener('click', () => {
             this.savePhotoOrder();
         });
 
-
+        // Export functionality
+        document.getElementById('export-data').addEventListener('click', () => {
+            this.exportData();
+        });
 
         // Navigation controls
         document.getElementById('prev-image').addEventListener('click', () => {
@@ -93,6 +91,9 @@ class VirtualTourApp {
         this.images = [];
         this.hotspots = [];
         
+        // Load hotspots from localStorage for this folder
+        this.loadHotspotsFromStorage(folderName);
+        
         try {
             const imageFiles = this.getImageFilesForFolder(folderName);
             this.updateLoadingText(`Loading ${imageFiles.length} images from ${folderName}...`);
@@ -102,9 +103,7 @@ class VirtualTourApp {
             
             this.images = loadedImages;
             this.photoOrder = [...this.images];
-            this.currentImageIndex = 0;
-            await this.loadHotspots(folderName);
-            
+            this.currentImageIndex = 0;            
             this.updateLoadingText('Images loaded successfully!');
             this.updateProgress(imageFiles.length, imageFiles.length);
             
@@ -350,39 +349,40 @@ class VirtualTourApp {
         this.setupAFrame();
     }
 
-toggleDevMode() {
-    this.devMode = !this.devMode;
-    const devControls = document.getElementById('dev-controls');
-    const btn = document.getElementById('devModeBtn');
-    const reticle = document.getElementById('reticle');
-    
-    if (this.devMode) {
-        devControls.classList.remove('hidden');
-        reticle.classList.remove('hidden');
-        btn.textContent = 'Exit Dev Mode';
-        btn.classList.add('btn-primary');
-        btn.classList.remove('btn-secondary');
-        this.createHotspotAtPosition();
+    toggleDevMode() {
+        this.devMode = !this.devMode;
+        const devControls = document.getElementById('dev-controls');
+        const btn = document.getElementById('devModeBtn');
+        const reticle = document.getElementById('reticle');
+        
+        if (this.devMode) {
+            devControls.classList.remove('hidden');
+            reticle.classList.remove('hidden');
+            btn.textContent = 'Exit Dev Mode';
+            btn.classList.add('btn-primary');
+            btn.classList.remove('btn-secondary');
+            this.createHotspotAtPosition();
 
-        // Reset form state
-        this.selectedTargetImageIndex = undefined;
-        const targetImageContainer = document.getElementById('hotspot-target-image-container');
-        if (targetImageContainer) {
-            targetImageContainer.style.display = 'block';
-        }  
-        // Populate the image preview grid
-        this.populateImagePreviewGrid();
-        const form = document.getElementById('dev-controls');
-        console.log('Form element:', form);
-        form.style.display = 'block';
-    } else {
-        devControls.classList.add('hidden');
-        reticle.classList.add('hidden');
-        btn.textContent = 'Dev Mode';
-        btn.classList.add('btn-secondary');
-        btn.classList.remove('btn-primary');
+            // Reset form state
+            this.selectedTargetImageIndex = undefined;
+            const targetImageContainer = document.getElementById('hotspot-target-image-container');
+            if (targetImageContainer) {
+                targetImageContainer.style.display = 'block';
+            }  
+            // Populate the image preview grid
+            this.populateImagePreviewGrid();
+            const form = document.getElementById('dev-controls');
+            console.log('Form element:', form);
+            form.style.display = 'block';
+        } else {
+            devControls.classList.add('hidden');
+            reticle.classList.add('hidden');
+            btn.textContent = 'Dev Mode';
+            btn.classList.add('btn-secondary');
+            btn.classList.remove('btn-primary');
+        }
     }
-}
+
     createHotspotAtPosition() {
         const camera = document.querySelector('#main-camera');
         
@@ -407,8 +407,8 @@ toggleDevMode() {
             y: spherePos.y,
             z: spherePos.z,
             aframe: `${spherePos.x} ${spherePos.y} ${spherePos.z}`
-    } 
-}
+        } 
+    }
 
     saveHotspot() {
         this.createHotspotAtPosition();
@@ -487,11 +487,11 @@ toggleDevMode() {
         console.log('Current image hotspots:', currentHotspots.length);
         console.log('All hotspots:', this.hotspots.map(h => ({ id: h.id, imageIndex: h.imageIndex})));
         
-            currentHotspots.forEach(hotspot => {
+        currentHotspots.forEach(hotspot => {
             if (!hotspot.position || !hotspot.position.aframe) {
-            console.warn('Skipping hotspot with invalid position:', hotspot);
-            return;
-        }
+                console.warn('Skipping hotspot with invalid position:', hotspot);
+                return;
+            }
     
             const hotspotElement = document.createElement('a-sphere');
             hotspotElement.setAttribute('position', hotspot.position.aframe);
@@ -546,8 +546,6 @@ toggleDevMode() {
             this.loadCurrentImage();
         }
     }
-
-
 
     populateImagePreviewGrid() {
         const previewGrid = document.getElementById('image-preview-grid');
@@ -690,63 +688,164 @@ toggleDevMode() {
     async savePhotoOrder() {
         try {
             const orderData = this.photoOrder.map(p => p.name);
-            const result = await window.storage.set(
-                `photoOrder:${this.currentFolder}`, 
-                JSON.stringify(orderData),
-                false
-            );
-            
-            if (result) {
-                alert('Photo order saved!');
-            } else {
-                alert('Failed to save photo order');
-            }
+            const key = `photoOrder:${this.currentFolder}`;
+            localStorage.setItem(key, JSON.stringify(orderData));
+            alert('Photo order saved!');
+            console.log(orderData);
         } catch (error) {
             console.error('Error saving photo order:', error);
             alert('Error saving photo order: ' + error.message);
         }
     }
 
-
-    async loadHotspots(folderName) {
+    async loadDataFromJson() {
         try {
-            const result = await window.storage.get(`hotspots:${folderName}`, false);
-            
-            if (result && result.value) {
-                this.hotspots = JSON.parse(result.value);
-                console.log(`Loaded ${this.hotspots.length} hotspots from storage for ${folderName}`);
-            } else {
-                this.hotspots = [];
-                console.log(`No hotspots found for ${folderName}, starting fresh`);
+            const response = await fetch('./data.json');
+            if (!response.ok) {
+                console.log('No data.json found, using localStorage');
+                return;
             }
+            
+            const data = await response.json();
+            console.log('Loading data from data.json:', data);
+            
+            // Load hotspots for each folder
+            if (data.hotspots) {
+                Object.keys(data.hotspots).forEach(folder => {
+                    const key = `hotspots:${folder}`;
+                    // Extract just the hotspots array from the nested structure
+                    const hotspotsData = data.hotspots[folder].hotspots || data.hotspots[folder];
+                    localStorage.setItem(key, JSON.stringify(hotspotsData));
+                });
+                console.log('Imported hotspots from data.json');
+            }
+            
+            // Load photo orders for each folder
+            if (data.photoOrders) {
+                Object.keys(data.photoOrders).forEach(folder => {
+                    const key = `photoOrder:${folder}`;
+                    localStorage.setItem(key, JSON.stringify(data.photoOrders[folder]));
+                });
+                console.log('Imported photo orders from data.json');
+            }
+            
+            console.log('Successfully loaded all data from data.json');
         } catch (error) {
-            console.log('No existing hotspots found (this is normal for new folders):', error.message);
-            this.hotspots = [];
+            console.log('No data.json found or error reading it (this is normal):', error.message);
+        }
+    }
+
+    exportData() {
+        try {
+            const exportData = {
+                hotspots: {},
+                photoOrders: {},
+                exportedAt: new Date().toISOString()
+            };
+            
+            // Get all hotspots from localStorage
+            const folders = ['pakapiens', 'pietura', 'spaktele'];
+            folders.forEach(folder => {
+                const hotspotsKey = `hotspots:${folder}`;
+                const hotspotsData = localStorage.getItem(hotspotsKey);
+                if (hotspotsData) {
+                    const parsedData = JSON.parse(hotspotsData);
+                    // Export only the hotspots array
+                    if (Array.isArray(parsedData)) {
+                        exportData.hotspots[folder] = parsedData;
+                    } else if (parsedData.hotspots) {
+                        exportData.hotspots[folder] = parsedData.hotspots;
+                    }
+                }
+                
+                const photoOrderKey = `photoOrder:${folder}`;
+                const photoOrderData = localStorage.getItem(photoOrderKey);
+                if (photoOrderData) {
+                    exportData.photoOrders[folder] = JSON.parse(photoOrderData);
+                }
+            });
+            
+            // Create and download JSON file
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `data.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+            
+            // Show success message
+            const messageDiv = document.createElement('div');
+            messageDiv.textContent = 'Data exported successfully!';
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #28a745;
+                color: white;
+                padding: 12px 24px;
+                border-radius: 6px;
+                z-index: 1000;
+                font-weight: 500;
+                box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+            `;
+            
+            document.body.appendChild(messageDiv);
+            
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 3000);
+            
+            console.log('Data exported successfully:', exportData);
+        } catch (error) {
+            console.error('Error exporting data:', error);
+            alert('Error exporting data: ' + error.message);
         }
     }
 
     async saveHotspotsToStorage() {
         try {
-            const data = {
-                hotspots: this.hotspots,
-                folder: this.currentFolder,
-                lastUpdated: new Date().toISOString()
-            };
-            
-            const result = await window.storage.set(
-                `hotspots:${this.currentFolder}`, 
-                JSON.stringify(data),
-                false
-            );
-            
-            if (result) {
-                console.log('Hotspots saved to storage successfully');
-            } else {
-                console.error('Failed to save hotspots to storage');
-            }
+            const key = `hotspots:${this.currentFolder}`;
+            // Save only the hotspots array for simpler format
+            localStorage.setItem(key, JSON.stringify(this.hotspots));
+            console.log('Hotspots saved to storage successfully');
+            console.log(this.hotspots);
         } catch (error) {
             console.error('Error saving hotspots to storage:', error);
             alert('Error saving hotspots: ' + error.message);
+        }
+    }
+
+    loadHotspotsFromStorage(folderName) {
+        try {
+            const key = `hotspots:${folderName}`;
+            const storedData = localStorage.getItem(key);
+            
+            if (storedData) {
+                const parsedData = JSON.parse(storedData);
+                // Handle both old format (direct array) and new format (object with hotspots property)
+                if (Array.isArray(parsedData)) {
+                    this.hotspots = parsedData;
+                } else if (parsedData.hotspots) {
+                    this.hotspots = parsedData.hotspots;
+                } else {
+                    this.hotspots = [];
+                }
+                console.log(`Loaded ${this.hotspots.length} hotspots for ${folderName}`);
+            } else {
+                console.log(`No hotspots found for ${folderName}`);
+                this.hotspots = [];
+            }
+        } catch (error) {
+            console.error('Error loading hotspots from storage:', error);
+            this.hotspots = [];
         }
     }
 
