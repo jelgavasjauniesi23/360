@@ -709,11 +709,12 @@ class VirtualTourApp {
             let position = hotspot.position.aframe;
             const scene = document.querySelector('#aframe-scene');
             if (scene && (scene.is('vr-mode') || scene.is('ar-mode'))) {
+                alert('VR/AR mode detected');	
                 // Parse the position string and apply scaling
                 const [x, y, z] = hotspot.position.aframe.split(' ').map(parseFloat);
-                const scaledX = x * 5.0;
-                const scaledY = y * 5.0;
-                const scaledZ = z * 5.0;
+                const scaledX = x * 50.0;
+                const scaledY = y * 50.0;
+                const scaledZ = z * 50.0;
                 position = `${scaledX} ${scaledY} ${scaledZ}`;
             }
     
