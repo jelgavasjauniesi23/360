@@ -712,11 +712,13 @@ class VirtualTourApp {
                     parseFloat(hotspot.position.y),
                     parseFloat(hotspot.position.z)
                 );
-                const vec = basePos.clone().sub(camPos).multiplyScalar(2);
+                const vec = basePos.clone().sub(camPos).multiplyScalar(4);
                 const newPos = camPos.clone().add(vec);
                 hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y} ${newPos.z}`);
+                hotspotElement.setAttribute('radius', '1');
+            }else {
+                hotspotElement.setAttribute('radius', '0.25');
             }
-            hotspotElement.setAttribute('radius', '0.25');
             hotspotElement.setAttribute('color', '#667eea');
             hotspotElement.setAttribute('opacity', '0.8');
             hotspotElement.setAttribute('cursor-listener', '');
