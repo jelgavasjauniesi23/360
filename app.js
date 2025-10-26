@@ -21,7 +21,92 @@ class VirtualTourApp {
         this.setupEventListeners();
         await this.loadFolderImages('pakapiens');
         this.setupAFrame();
+        this.setupControllerEvents();
         this.hideLoading();
+    }
+    
+    setupControllerEvents() {
+        // Wait for A-Frame to be ready
+        if (typeof AFRAME === 'undefined') {
+            console.warn('A-Frame not loaded yet, controller events not set up');
+            return;
+        }
+        
+        // Get controller elements
+        const leftController = document.querySelector('#left-controller');
+        const rightController = document.querySelector('#right-controller');
+        
+        if (!leftController || !rightController) {
+            console.warn('Controller elements not found');
+            return;
+        }
+        
+        // Set up raycaster events for controllers
+        leftController.addEventListener('raycaster-intersection', (e) => {
+            this.handleControllerIntersection(e, 'left');
+        });
+        
+        leftController.addEventListener('raycaster-intersection-cleared', (e) => {
+            this.handleControllerIntersectionCleared(e, 'left');
+        });
+        
+        rightController.addEventListener('raycaster-intersection', (e) => {
+            this.handleControllerIntersection(e, 'right');
+        });
+        
+        rightController.addEventListener('raycaster-intersection-cleared', (e) => {
+            this.handleControllerIntersectionCleared(e, 'right');
+        });
+        
+        console.log('Controller events set up successfully');
+    }
+    
+    handleControllerIntersection(event, controllerType) {
+        // Get the intersected elements
+        const intersectedEls = event.detail.els;
+        
+        // Check if any of the intersected elements are hotspots
+        for (let i = 0; i < intersectedEls.length; i++) {
+            const el = intersectedEls[i];
+            
+            // Check if this is a hotspot
+            if (el.classList && el.classList.contains('hotspot')) {
+                // Visual feedback - scale up the hotspot
+                el.setAttribute('scale', '1.2 1.2 1.2');
+                
+                // Change opacity to indicate hover
+                el.setAttribute('opacity', '1.0');
+                
+                // Change color to indicate hover
+                el.setAttribute('color', '#ff9500');
+                
+                console.log(`${controllerType} controller intersecting with hotspot:`, el.id);
+            }
+        }
+    }
+    
+    handleControllerIntersectionCleared(event, controllerType) {
+        // Get the intersected elements that are no longer intersected
+        const clearedEls = event.detail.clearedEls;
+        
+        // Reset the visual state of cleared elements
+        for (let i = 0; i < clearedEls.length; i++) {
+            const el = clearedEls[i];
+            
+            // Check if this is a hotspot
+            if (el.classList && el.classList.contains('hotspot')) {
+                // Reset scale
+                el.setAttribute('scale', '1 1 1');
+                
+                // Reset opacity
+                el.setAttribute('opacity', '0.8');
+                
+                // Reset color
+                el.setAttribute('color', '#667eea');
+                
+                console.log(`${controllerType} controller no longer intersecting with hotspot:`, el.id);
+            }
+        }
     }
 
     setupEventListeners() {
@@ -265,11 +350,69 @@ class VirtualTourApp {
             imagesCount: this.images.length
         });
         
+        // Setup controller event listeners for VR/AR mode
+        this.setupControllerEvents();
+        
         if (this.images.length > 0) {
             this.loadCurrentImage();
         } else {
             console.warn('No images loaded yet');
         }
+    }
+    
+    setupControllerEvents() {
+        // Get controller entities
+        const leftController = document.querySelector('#left-controller');
+        const rightController = document.querySelector('#right-controller');
+        
+        if (leftController) {
+            leftController.addEventListener('raycaster-intersection', (e) => {
+                console.log('Left controller intersection:', e.detail.els);
+                this.handleControllerIntersection(e, 'left');
+            });
+            
+            leftController.addEventListener('raycaster-intersection-cleared', (e) => {
+                this.handleControllerIntersectionCleared(e, 'left');
+            });
+        }
+        
+        if (rightController) {
+            rightController.addEventListener('raycaster-intersection', (e) => {
+                console.log('Right controller intersection:', e.detail.els);
+                this.handleControllerIntersection(e, 'right');
+            });
+            
+            rightController.addEventListener('raycaster-intersection-cleared', (e) => {
+                this.handleControllerIntersectionCleared(e, 'right');
+            });
+        }
+    }
+    
+    handleControllerIntersection(event, hand) {
+        const intersectedEls = event.detail.els;
+        
+        // Check if any of the intersected elements are hotspots
+        intersectedEls.forEach(el => {
+            if (el.classList.contains('hotspot')) {
+                // Visual feedback for intersection
+                el.setAttribute('scale', '1.2 1.2 1.2');
+                el.setAttribute('opacity', '1');
+                el.setAttribute('color', '#ff9500'); // Highlight color
+            }
+        });
+    }
+    
+    handleControllerIntersectionCleared(event, hand) {
+        const clearedEls = event.detail.clearedEls;
+        
+        // Reset visual state for elements that are no longer intersected
+        clearedEls.forEach(el => {
+            if (el.classList.contains('hotspot')) {
+                el.setAttribute('scale', '1 1 1');
+                el.setAttribute('opacity', '0.8');
+                el.setAttribute('color', '#667eea'); // Reset to original color
+            }
+        });
     }
 
     loadCurrentImage() {
@@ -440,7 +583,15 @@ class VirtualTourApp {
         direction.applyQuaternion(camera3D.quaternion);
         
         // Calculate position at configurable distance
-        const distance = parseFloat(this.tempHotspotDistance || 1.0);
+        let distance = parseFloat(this.tempHotspotDistance || 1.0);
+        
+        // Check if in VR/AR mode and adjust distance accordingly
+        const scene = document.querySelector('a-scene');
+        if (scene && scene.is('vr-mode') || scene && scene.is('ar-mode')) {
+            // Apply a scaling factor for VR/AR mode to maintain consistent perceived distance
+            distance = distance * 3.0; // Adjust this multiplier based on testing
+        }
+        
         const spherePos = cameraWorldPos.clone().add(direction.multiplyScalar(distance));
         
         // Update test sphere position
