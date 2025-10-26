@@ -32,20 +32,6 @@ class VirtualTourApp {
             return;
         }
         
-        // Get scene and add VR/AR mode change listeners
-        const scene = document.querySelector('#aframe-scene');
-        if (scene) {
-            scene.addEventListener('enter-vr', () => {
-                console.log('Entered VR/AR mode, re-rendering hotspots with adjusted distances');
-                setTimeout(() => this.renderHotspots(), 100);
-            });
-            
-            scene.addEventListener('exit-vr', () => {
-                console.log('Exited VR/AR mode, re-rendering hotspots with normal distances');
-                setTimeout(() => this.renderHotspots(), 100);
-            });
-        }
-        
         // Get controller elements
         const leftController = document.querySelector('#left-controller');
         const rightController = document.querySelector('#right-controller');
@@ -366,7 +352,17 @@ class VirtualTourApp {
         
         // Setup controller event listeners for VR/AR mode
         this.setupControllerEvents();
-        
+        // Add XR mode listeners to adjust hotspot distance
+        if (this.scene) {
+            this.scene.addEventListener('enter-vr', () => {
+                this.isXRMode = true;
+                this.renderHotspots();
+            });
+            this.scene.addEventListener('exit-vr', () => {
+                this.isXRMode = false;
+                this.renderHotspots();
+            });
+        }
         if (this.images.length > 0) {
             this.loadCurrentImage();
         } else {
@@ -704,22 +700,22 @@ class VirtualTourApp {
                 console.warn('Skipping hotspot with invalid position:', hotspot);
                 return;
             }
-            
-            // Adjust hotspot position for VR/AR mode
-            let position = hotspot.position.aframe;
-            const scene = document.querySelector('#aframe-scene');
-            if (scene && (scene.is('vr-mode') || scene.is('ar-mode'))) {
-                alert('VR/AR mode detected');	
-                // Parse the position string and apply scaling
-                const [x, y, z] = hotspot.position.aframe.split(' ').map(parseFloat);
-                const scaledX = x * 50.0;
-                const scaledY = y * 50.0;
-                const scaledZ = z * 50.0;
-                position = `${scaledX} ${scaledY} ${scaledZ}`;
-            }
-    
+
             const hotspotElement = document.createElement('a-sphere');
-            hotspotElement.setAttribute('position', position);
+            hotspotElement.setAttribute('position', hotspot.position.aframe);
+            // Adjust position for XR mode: double distance from camera
+            if (this.isXRMode && this.camera && this.camera.object3D) {
+                const camPos = new THREE.Vector3();
+                this.camera.object3D.getWorldPosition(camPos);
+                const basePos = new THREE.Vector3(
+                    parseFloat(hotspot.position.x),
+                    parseFloat(hotspot.position.y),
+                    parseFloat(hotspot.position.z)
+                );
+                const vec = basePos.clone().sub(camPos).multiplyScalar(2);
+                const newPos = camPos.clone().add(vec);
+                hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y} ${newPos.z}`);
+            }
             hotspotElement.setAttribute('radius', '0.25');
             hotspotElement.setAttribute('color', '#667eea');
             hotspotElement.setAttribute('opacity', '0.8');
