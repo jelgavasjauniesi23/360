@@ -439,8 +439,8 @@ class VirtualTourApp {
         const direction = new THREE.Vector3(0, 0.65, -5);
         direction.applyQuaternion(camera3D.quaternion);
         
-        // Calculate position at fixed distance
-        const distance = 1;
+        // Calculate position at configurable distance
+        const distance = parseFloat(this.tempHotspotDistance || 1.0);
         const spherePos = cameraWorldPos.clone().add(direction.multiplyScalar(distance));
         
         // Update test sphere position
@@ -476,7 +476,7 @@ class VirtualTourApp {
             targetImageIndex: this.selectedTargetImageIndex,
             targetImageName: targetImageName, // Store target image name for better tracking
             createdAt: new Date().toISOString(),
-            radius: "0.5"
+            distance: "1.0" // Default distance from camera
         };
         
         this.hotspots.push(hotspot);
@@ -549,7 +549,7 @@ class VirtualTourApp {
     
             const hotspotElement = document.createElement('a-sphere');
             hotspotElement.setAttribute('position', hotspot.position.aframe);
-            hotspotElement.setAttribute('radius', hotspot.radius / 2 || '0.5');
+            hotspotElement.setAttribute('radius', '0.25');
             hotspotElement.setAttribute('color', '#667eea');
             hotspotElement.setAttribute('opacity', '0.8');
             hotspotElement.setAttribute('cursor-listener', '');
@@ -1025,40 +1025,40 @@ class VirtualTourApp {
         });
         menu.appendChild(deleteBtn);
 
-        // Size adjustment
-        const sizeDiv = document.createElement('div');
-        sizeDiv.style.cssText = `
+        // Distance adjustment
+        const distanceDiv = document.createElement('div');
+        distanceDiv.style.cssText = `
             padding: 8px 16px;
             border-top: 1px solid #eee;
         `;
         
-        const sizeLabel = document.createElement('div');
-        sizeLabel.textContent = 'Size:';
-        sizeLabel.style.cssText = 'font-size: 12px; color: #666; margin-bottom: 4px;';
-        sizeDiv.appendChild(sizeLabel);
+        const distanceLabel = document.createElement('div');
+        distanceLabel.textContent = 'Distance:';
+        distanceLabel.style.cssText = 'font-size: 12px; color: #666; margin-bottom: 4px;';
+        distanceDiv.appendChild(distanceLabel);
 
-        const sizeSlider = document.createElement('input');
-        sizeSlider.type = 'range';
-        sizeSlider.min = '0.1';
-        sizeSlider.max = '1';
-        sizeSlider.step = '0.1';
-        sizeSlider.value = hotspot.radius || '0.5';
-        sizeSlider.style.cssText = 'width: 100%;';
-        sizeSlider.addEventListener('input', (e) => {
-            this.updateHotspotSize(hotspotId, parseFloat(e.target.value));
+        const distanceSlider = document.createElement('input');
+        distanceSlider.type = 'range';
+        distanceSlider.min = '0.5';
+        distanceSlider.max = '2.0';
+        distanceSlider.step = '0.1';
+        distanceSlider.value = hotspot.distance || '1.0';
+        distanceSlider.style.cssText = 'width: 100%;';
+        distanceSlider.addEventListener('input', (e) => {
+            this.updateHotspotDistance(hotspotId, parseFloat(e.target.value));
         });
-        sizeDiv.appendChild(sizeSlider);
+        distanceDiv.appendChild(distanceSlider);
 
-        const sizeValue = document.createElement('div');
-        sizeValue.textContent = `Current: ${hotspot.radius || '0.5'}`;
-        sizeValue.style.cssText = 'font-size: 11px; color: #999; text-align: center; margin-top: 4px;';
-        sizeDiv.appendChild(sizeValue);
+        const distanceValue = document.createElement('div');
+        distanceValue.textContent = `Current: ${hotspot.distance || '1.0'}`;
+        distanceValue.style.cssText = 'font-size: 11px; color: #999; text-align: center; margin-top: 4px;';
+        distanceDiv.appendChild(distanceValue);
 
-        sizeSlider.addEventListener('input', (e) => {
-            sizeValue.textContent = `Current: ${e.target.value}`;
+        distanceSlider.addEventListener('input', (e) => {
+            distanceValue.textContent = `Current: ${e.target.value}`;
         });
 
-        menu.appendChild(sizeDiv);
+        menu.appendChild(distanceDiv);
 
         document.body.appendChild(menu);
 
@@ -1109,20 +1109,26 @@ class VirtualTourApp {
         }
     }
 
-    updateHotspotSize(hotspotId, newSize) {
-        console.log('Updating hotspot size:', hotspotId, newSize);
+    updateHotspotDistance(hotspotId, newDistance) {
+        console.log('Updating hotspot distance:', hotspotId, newDistance);
         const hotspot = this.hotspots.find(h => h.id === hotspotId);
         if (hotspot) {
-            hotspot.radius = newSize.toString();
-            console.log('Updated hotspot radius to:', hotspot.radius);
+            hotspot.distance = newDistance.toString();
+            console.log('Updated hotspot distance to:', hotspot.distance);
             
-            // Re-render hotspots to show size change
+            // Update the hotspot position based on new distance
+            this.tempHotspotDistance = newDistance;
+            this.tempHotspotPosition = hotspot.position;
+            this.createHotspotAtPosition();
+            hotspot.position = this.tempHotspotPosition;
+            
+            // Re-render hotspots to show position change
             this.renderHotspots();
             
             // Save to storage
             this.saveHotspotsToStorage();
         } else {
-            console.error('Hotspot not found for size update:', hotspotId);
+            console.error('Hotspot not found for distance update:', hotspotId);
         }
     }
 
