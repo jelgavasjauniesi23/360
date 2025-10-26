@@ -182,7 +182,7 @@ class VirtualTourApp {
 
         try {
             const imageFiles = this.getImageFilesForFolder(folderName);
-            this.updateLoadingText(`Loading ${imageFiles.length} images from ${folderName}...`);
+            this.updateLoadingText(`Lādējas ${imageFiles.length} attēli no ${folderName}...`);
             this.updateProgress(0, imageFiles.length);
 
             // Load current folder’s images in batches of 3
@@ -205,7 +205,7 @@ class VirtualTourApp {
 
             this.photoOrder = [...this.images];
             this.currentImageIndex = 0;
-            this.updateLoadingText('Images loaded successfully!');
+            this.updateLoadingText('Attēli ielādēti!');
             this.updateProgress(imageFiles.length, imageFiles.length);
 
             // Start background loading of other folders
@@ -222,7 +222,7 @@ class VirtualTourApp {
             }, 2000);
         }
     }
-    
+
     async loadImagesInBatches(imageFiles, folderName, batchSize = 3) {
         const loadedImages = [];
         const totalImages = imageFiles.length;
@@ -230,7 +230,7 @@ class VirtualTourApp {
         for (let i = 0; i < totalImages; i += batchSize) {
             const batch = imageFiles.slice(i, i + batchSize);
             this.updateLoadingText(`Loading ${batch.join(', ')}...`);
-            this.updateLoadingDetails(`${Math.min(i + batchSize, totalImages)} of ${totalImages} images`);
+            this.updateLoadingDetails(`${Math.min(i + batchSize, totalImages)} no ${totalImages} attēliem`);
 
             // Load up to 3 concurrently
             const results = await Promise.allSettled(
