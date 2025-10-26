@@ -32,6 +32,20 @@ class VirtualTourApp {
             return;
         }
         
+        // Get scene and add VR/AR mode change listeners
+        const scene = document.querySelector('#aframe-scene');
+        if (scene) {
+            scene.addEventListener('enter-vr', () => {
+                console.log('Entered VR/AR mode, re-rendering hotspots with adjusted distances');
+                setTimeout(() => this.renderHotspots(), 100);
+            });
+            
+            scene.addEventListener('exit-vr', () => {
+                console.log('Exited VR/AR mode, re-rendering hotspots with normal distances');
+                setTimeout(() => this.renderHotspots(), 100);
+            });
+        }
+        
         // Get controller elements
         const leftController = document.querySelector('#left-controller');
         const rightController = document.querySelector('#right-controller');
@@ -585,13 +599,6 @@ class VirtualTourApp {
         // Calculate position at configurable distance
         let distance = parseFloat(this.tempHotspotDistance || 1.0);
         
-        // Check if in VR/AR mode and adjust distance accordingly
-        const scene = document.querySelector('a-scene');
-        if (scene && scene.is('vr-mode') || scene && scene.is('ar-mode')) {
-            // Apply a scaling factor for VR/AR mode to maintain consistent perceived distance
-            distance = distance * 3.0; // Adjust this multiplier based on testing
-        }
-        
         const spherePos = cameraWorldPos.clone().add(direction.multiplyScalar(distance));
         
         // Update test sphere position
@@ -697,9 +704,21 @@ class VirtualTourApp {
                 console.warn('Skipping hotspot with invalid position:', hotspot);
                 return;
             }
+            
+            // Adjust hotspot position for VR/AR mode
+            let position = hotspot.position.aframe;
+            const scene = document.querySelector('#aframe-scene');
+            if (scene && (scene.is('vr-mode') || scene.is('ar-mode'))) {
+                // Parse the position string and apply scaling
+                const [x, y, z] = hotspot.position.aframe.split(' ').map(parseFloat);
+                const scaledX = x * 5.0;
+                const scaledY = y * 5.0;
+                const scaledZ = z * 5.0;
+                position = `${scaledX} ${scaledY} ${scaledZ}`;
+            }
     
             const hotspotElement = document.createElement('a-sphere');
-            hotspotElement.setAttribute('position', hotspot.position.aframe);
+            hotspotElement.setAttribute('position', position);
             hotspotElement.setAttribute('radius', '0.25');
             hotspotElement.setAttribute('color', '#667eea');
             hotspotElement.setAttribute('opacity', '0.8');
