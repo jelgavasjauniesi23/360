@@ -703,6 +703,18 @@ renderHotspots() {
 
   console.log('Current image hotspots:', currentHotspots.length);
 
+  // Precompute camera info for XR mode
+  const isXR = !!this.isXRMode;
+  let camPos = null;
+  let camDir = null;
+  if (isXR && this.camera && this.camera.object3D) {
+    camPos = new THREE.Vector3();
+    this.camera.object3D.getWorldPosition(camPos);
+    // Camera forward direction (-Z in camera space)
+    camDir = new THREE.Vector3(0, 0, -1);
+    camDir.applyQuaternion(this.camera.object3D.quaternion).normalize();
+  }
+
   currentHotspots.forEach(hotspot => {
     if (!hotspot.position || !hotspot.position.aframe) {
       console.warn('Skipping hotspot with invalid position:', hotspot);
@@ -710,21 +722,22 @@ renderHotspots() {
     }
 
     const hotspotElement = document.createElement('a-sphere');
-    hotspotElement.setAttribute('position', hotspot.position.aframe);
 
-    if (this.isXRMode && this.camera && this.camera.object3D) {
-      const camPos = new THREE.Vector3();
-      this.camera.object3D.getWorldPosition(camPos);
-      const basePos = new THREE.Vector3(
-        parseFloat(hotspot.position.x),
-        parseFloat(hotspot.position.y),
-        parseFloat(hotspot.position.z)
-      );
-      const vec = basePos.clone().sub(camPos).multiplyScalar(4);
-      const newPos = camPos.clone().add(vec);
+    if (isXR && camPos && camDir) {
+      // In XR, place hotspot in front of camera at desired distance
+      const distance = parseFloat(hotspot.distance || '1.0');
+      const newPos = camPos.clone().add(camDir.clone().multiplyScalar(distance));
+      // Lock Y to fixed camera height (eye level) if available
+      if (typeof this.fixedCameraHeight === 'number') {
+        newPos.y = this.fixedCameraHeight;
+      } else {
+        newPos.y = camPos.y;
+      }
       hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y} ${newPos.z}`);
       hotspotElement.setAttribute('radius', '0.75');
     } else {
+      // Non-XR: use saved absolute position
+      hotspotElement.setAttribute('position', hotspot.position.aframe);
       hotspotElement.setAttribute('radius', '0.25');
     }
 
