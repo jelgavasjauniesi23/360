@@ -14,6 +14,7 @@ class VirtualTourApp {
         this.tempHotspotPosition = null;
         this.vrNavigationPanel = null;
         this.isXRMode = false;
+        this.cameraRotationCheckInterval = null;
         
         this.init();
     }
@@ -366,6 +367,38 @@ class VirtualTourApp {
         }
     }
     
+    startCameraRotationCheck() {
+        if (this.cameraRotationCheckInterval) {
+            clearInterval(this.cameraRotationCheckInterval);
+        }
+        
+        this.cameraRotationCheckInterval = setInterval(() => {
+            if (!this.camera || !this.camera.object3D) return;
+            
+            const cameraRotation = this.camera.object3D.rotation;
+            const pitchInDegrees = THREE.MathUtils.radToDeg(cameraRotation.x);
+            
+            if (this.vrNavigationPanel) {
+                // Show panel when looking down (pitch < -30°)
+                if (pitchInDegrees < -30) {
+                    this.vrNavigationPanel.setAttribute('visible', 'true');
+                } 
+                // Hide panel when looking back up (pitch > -20°)
+                else if (pitchInDegrees > -20) {
+                    this.vrNavigationPanel.setAttribute('visible', 'false');
+                }
+            }
+        }, 100); // Check every 100ms
+    }
+
+    // New method to stop checking camera rotation
+    stopCameraRotationCheck() {
+        if (this.cameraRotationCheckInterval) {
+            clearInterval(this.cameraRotationCheckInterval);
+            this.cameraRotationCheckInterval = null;
+        }
+    }
+
     createVRNavigationPanel() {
         const existingPanel = document.querySelector('#vr-navigation-panel');
         if (existingPanel) {
@@ -402,6 +435,28 @@ class VirtualTourApp {
         tours.forEach(tour => {
             const buttonGroup = document.createElement('a-entity');
             buttonGroup.setAttribute('position', tour.position);
+            
+            // Get first image from folder for preview
+            const imageFiles = this.getImageFilesForFolder(tour.folder);
+            const previewImagePath = `./${tour.folder}/${imageFiles[0]}`;
+            
+            // Preview image plane
+            const previewPlane = document.createElement('a-plane');
+            previewPlane.setAttribute('width', '0.6');
+            previewPlane.setAttribute('height', '0.3');
+            previewPlane.setAttribute('position', '0 0.2 0.01');
+            previewPlane.setAttribute('src', previewImagePath);
+            previewPlane.setAttribute('shader', 'flat');
+            buttonGroup.appendChild(previewPlane);
+            
+            // Preview border
+            const previewBorder = document.createElement('a-plane');
+            previewBorder.setAttribute('width', '0.64');
+            previewBorder.setAttribute('height', '0.34');
+            previewBorder.setAttribute('position', '0 0.2 0.005');
+            previewBorder.setAttribute('color', this.currentFolder === tour.folder ? '#667eea' : '#444');
+            previewBorder.setAttribute('shader', 'flat');
+            buttonGroup.appendChild(previewBorder);
             
             const button = document.createElement('a-box');
             button.setAttribute('width', '0.65');
@@ -456,14 +511,23 @@ class VirtualTourApp {
         const buttons = this.vrNavigationPanel.querySelectorAll('.vr-tour-button');
         buttons.forEach(button => {
             const folder = button.getAttribute('data-folder');
+            const buttonGroup = button.parentElement;
+            const border = buttonGroup.querySelector('a-plane[height="0.34"]');
+            
             if (folder === this.currentFolder) {
                 button.setAttribute('color', '#667eea');
+                if (border) {
+                    border.setAttribute('color', '#667eea'); // Update border color
+                }
             } else {
                 button.setAttribute('color', '#16213e');
+                if (border) {
+                    border.setAttribute('color', '#444'); // Update border color
+                }
             }
         });
     }
-    
+
     onViewModeChange(isActive) {
         const leftController = document.querySelector('#left-controller');
         const rightController = document.querySelector('#right-controller');
@@ -472,11 +536,17 @@ class VirtualTourApp {
             rightController.setAttribute('visible', isActive ? 'true' : 'false');
         }
         
-        if (this.vrNavigationPanel) {
-            this.vrNavigationPanel.setAttribute('visible', isActive ? 'true' : 'false');
+        this.isXRMode = isActive;
+        
+        if (isActive) {
+            this.startCameraRotationCheck(); // Start monitoring
+        } else {
+            this.stopCameraRotationCheck(); // Stop monitoring
+            if (this.vrNavigationPanel) {
+                this.vrNavigationPanel.setAttribute('visible', 'false');
+            }
         }
         
-        this.isXRMode = isActive;
         this.renderHotspots();
     }
 
