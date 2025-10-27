@@ -74,6 +74,19 @@
                 <a-entity id="left-controller" laser-controls="hand: left" raycaster="objects: [data-raycastable]; lineColor: #667eea; lineOpacity: 0.8; showLine: true" visible="false"></a-entity>
                 <a-entity id="right-controller" laser-controls="hand: right" raycaster="objects: [data-raycastable]; lineColor: #667eea; lineOpacity: 0.8; showLine: true" visible="false"></a-entity>
                 
+                <!-- Exit fullscreen button for VR/AR mode -->
+                <a-entity id="exit-fullscreen-button" 
+                          geometry="primitive: plane; width: 0.5; height: 0.2" 
+                          material="color: #ff4b4b; opacity: 0.9" 
+                          text="value: Exit VR; align: center; color: white; width: 2"
+                          position="0 -0.7 -1.5"
+                          rotation="0 0 0"
+                          scale="0.5 0.5 0.5"
+                          visible="false"
+                          data-raycastable
+                          class="vr-ui-element">
+                </a-entity>
+                
             <!-- Hotspots will be added here dynamically -->
             <div id="hotspot-container"></div>
             

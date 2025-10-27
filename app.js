@@ -402,10 +402,29 @@ class VirtualTourApp {
     onViewModeChange(isActive) {
         const leftController = document.querySelector('#left-controller');
         const rightController = document.querySelector('#right-controller');
+        const exitButton = document.querySelector('#exit-fullscreen-button');
+        
         if (leftController && rightController) {
             leftController.setAttribute('visible', isActive ? 'true' : 'false');
             rightController.setAttribute('visible', isActive ? 'true' : 'false');
         }
+        
+        if (exitButton) {
+            exitButton.setAttribute('visible', isActive ? 'true' : 'false');
+            
+            // Remove any existing event listeners to prevent duplicates
+            const oldExitButton = exitButton.cloneNode(true);
+            exitButton.parentNode.replaceChild(oldExitButton, exitButton);
+            
+            // Add click event listener to exit VR mode
+            oldExitButton.addEventListener('click', () => {
+                console.log('Exit VR button clicked');
+                if (this.scene) {
+                    this.scene.exitVR();
+                }
+            });
+        }
+        
         this.isXRMode = isActive;
         this.renderHotspots();
     }
