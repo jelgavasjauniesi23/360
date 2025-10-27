@@ -21,7 +21,6 @@ class VirtualTourApp {
         this.setupEventListeners();
         await this.loadFolderImages('pakapiens');
         this.setupAFrame();
-        this.setupControllerEvents();
         this.hideLoading();
     }
     
@@ -40,6 +39,13 @@ class VirtualTourApp {
             console.warn('Controller elements not found');
             return;
         }
+        this.scene.addEventListener('enter-vr', () => {
+            this.onViewModeChange(true);
+        });
+
+        this.scene.addEventListener('exit-vr', () => {
+            this.onViewModeChange(false);
+        });
         
         // Set up raycaster events for controllers
         leftController.addEventListener('raycaster-intersection', (e) => {
@@ -381,23 +387,25 @@ class VirtualTourApp {
         });
         
         // Setup controller event listeners for VR/AR mode
-        this.setupControllerEvents();
-        // Add XR mode listeners to adjust hotspot distance
         if (this.scene) {
-            this.scene.addEventListener('enter-vr', () => {
-                this.isXRMode = true;
-                this.renderHotspots();
-            });
-            this.scene.addEventListener('exit-vr', () => {
-                this.isXRMode = false;
-                this.renderHotspots();
-            });
+            this.setupControllerEvents();
         }
         if (this.images.length > 0) {
             this.loadCurrentImage();
         } else {
             console.warn('No images loaded yet');
         }
+    }
+    
+    onViewModeChange(isActive) {
+        const leftController = document.querySelector('#left-controller');
+        const rightController = document.querySelector('#right-controller');
+        if (leftController && rightController) {
+            leftController.setAttribute('visible', isActive ? 'true' : 'false');
+            rightController.setAttribute('visible', isActive ? 'true' : 'false');
+        }
+        this.isXRMode = isActive;
+        this.renderHotspots();
     }
 
     loadCurrentImage() {
@@ -673,7 +681,7 @@ renderHotspots() {
     const hotspotElement = document.createElement('a-sphere');
     hotspotElement.setAttribute('position', hotspot.position.aframe);
 
-    if (this.isXRMode && this.camera && this.camera.object3D) {
+    if (this.isXRMode === true && this.camera && this.camera.object3D) {
       const camPos = new THREE.Vector3();
       this.camera.object3D.getWorldPosition(camPos);
       const basePos = new THREE.Vector3(
@@ -685,12 +693,12 @@ renderHotspots() {
       const newPos = camPos.clone().add(vec);
       hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y} ${newPos.z}`);
       hotspotElement.setAttribute('radius', '0.75');
+    hotspotElement.setAttribute('color', 'red');
     } else {
       hotspotElement.setAttribute('radius', '0.25');
+    hotspotElement.setAttribute('color', '#667eea');
     }
 
-    hotspotElement.setAttribute('fixed-to-camera', '');
-    hotspotElement.setAttribute('color', '#667eea');
     hotspotElement.setAttribute('opacity', '0.8');
     hotspotElement.setAttribute('cursor-listener', '');
     hotspotElement.setAttribute('data-hotspot-id', hotspot.id);
@@ -1309,18 +1317,6 @@ renderHotspots() {
             progressText.textContent = `${percentage}%`;
         }
     }
-}
-
-if (!AFRAME.components['fixed-to-camera']) {
-  AFRAME.registerComponent('fixed-to-camera', {
-    tick: function () {
-      const cam = document.querySelector('[camera]');
-      if (cam) {
-        const camRot = cam.getAttribute('rotation');
-        this.el.object3D.rotation.set(0, camRot.y * Math.PI / 180, 0);
-      }
-    }
-  });
 }
 
 // Initialize the application when DOM is loaded

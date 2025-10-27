@@ -19,24 +19,6 @@
                         });
                     }
                 });
-                
-                // Register controller-visibility component to ensure controllers are visible in AR mode
-                AFRAME.registerComponent('controller-visibility', {
-                    init: function() {
-                        const scene = document.querySelector('a-scene');
-                        
-                        // Make sure controllers are visible in AR mode
-                        scene.addEventListener('enter-vr', function() {
-                            const leftController = document.querySelector('#left-controller');
-                            const rightController = document.querySelector('#right-controller');
-                            
-                            if (leftController) leftController.setAttribute('visible', 'true');
-                            if (rightController) rightController.setAttribute('visible', 'true');
-                            
-                            console.log('Entered VR/AR mode, controllers visibility set to true');
-                        });
-                    }
-                });
             }
         });
     </script>
