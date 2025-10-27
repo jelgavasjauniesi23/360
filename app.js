@@ -406,22 +406,38 @@ class VirtualTourApp {
             leftController.setAttribute('visible', isActive ? 'true' : 'false');
             rightController.setAttribute('visible', isActive ? 'true' : 'false');
         }
-        // Adjust camera height when entering/exiting XR mode
-        // if (this.camera) {
-        //     try {
-        //         const targetY = isActive ? 10 : 1.65; // raise camera in XR mode
-        //         this.camera.setAttribute('position', `0 ${targetY} 0`);
-        //         if (this.camera.object3D && this.camera.object3D.position) {
-        //             this.camera.object3D.position.y = targetY;
-        //         }
-        //     } catch (e) {
-        //         console.warn('Failed to adjust camera height for XR mode:', e);
-        //     }
-        // }
+        
         this.isXRMode = isActive;
+        
+        // Lock camera height in VR mode
+        if (isActive && this.camera) {
+            // Store the initial camera height when entering VR
+            this.fixedCameraHeight = 1.65; // Standard eye height
+            
+            // Add a tick listener to keep camera at fixed height
+            if (!this.cameraHeightLock) {
+                this.cameraHeightLock = () => {
+                    if (this.isXRMode && this.camera && this.camera.object3D) {
+                        this.camera.object3D.position.y = this.fixedCameraHeight;
+                    }
+                };
+                this.scene.addEventListener('render-target-loaded', this.cameraHeightLock);
+                
+                // Use requestAnimationFrame for continuous updates
+                const updateCameraHeight = () => {
+                    if (this.isXRMode && this.camera && this.camera.object3D) {
+                        this.camera.object3D.position.y = this.fixedCameraHeight;
+                    }
+                    if (this.isXRMode) {
+                        requestAnimationFrame(updateCameraHeight);
+                    }
+                };
+                requestAnimationFrame(updateCameraHeight);
+            }
+        }
+        
         this.renderHotspots();
     }
-
     loadCurrentImage() {
         console.log('Loading current image...', this.currentImageIndex);
         if (this.images.length === 0) {
