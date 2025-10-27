@@ -12,9 +12,6 @@ class VirtualTourApp {
         this.photoOrder = [];
         this.imageCache = new Map();
         this.tempHotspotPosition = null;
-        this.vrNavigationPanel = null;
-        this.isXRMode = false;
-        this.cameraRotationCheckInterval = null;
         
         this.init();
     }
@@ -28,11 +25,13 @@ class VirtualTourApp {
     }
     
     setupControllerEvents() {
+        // Wait for A-Frame to be ready
         if (typeof AFRAME === 'undefined') {
             console.warn('A-Frame not loaded yet, controller events not set up');
             return;
         }
         
+        // Get controller elements
         const leftController = document.querySelector('#left-controller');
         const rightController = document.querySelector('#right-controller');
         
@@ -40,7 +39,6 @@ class VirtualTourApp {
             console.warn('Controller elements not found');
             return;
         }
-        
         this.scene.addEventListener('enter-vr', () => {
             if ("xr" in window.navigator) {
                 this.onViewModeChange(true);
@@ -51,6 +49,7 @@ class VirtualTourApp {
             this.onViewModeChange(false);
         });
         
+        // Set up raycaster events for controllers
         leftController.addEventListener('raycaster-intersection', (e) => {
             this.handleControllerIntersection(e, 'left');
         });
@@ -69,36 +68,57 @@ class VirtualTourApp {
         
         console.log('Controller events set up successfully');
     }
-
+    
     handleControllerIntersection(event, controllerType) {
+        // Get the intersected elements
         const intersectedEls = event.detail.els;
         
+        // Check if any of the intersected elements are hotspots
         for (let i = 0; i < intersectedEls.length; i++) {
             const el = intersectedEls[i];
             
+            // Check if this is a hotspot
             if (el.classList && el.classList.contains('hotspot')) {
+                // Visual feedback - scale up the hotspot
                 el.setAttribute('scale', '1.2 1.2 1.2');
+                
+                // Change opacity to indicate hover
+                el.setAttribute('opacity', '1.0');
+                
+                // Change color to indicate hover
                 el.setAttribute('color', '#ff9500');
+                
                 console.log(`${controllerType} controller intersecting with hotspot:`, el.id);
             }
         }
     }
     
     handleControllerIntersectionCleared(event, controllerType) {
+        // Get the intersected elements that are no longer intersected
         const clearedEls = event.detail.clearedEls;
         
+        // Reset the visual state of cleared elements
         for (let i = 0; i < clearedEls.length; i++) {
             const el = clearedEls[i];
             
+            // Check if this is a hotspot
             if (el.classList && el.classList.contains('hotspot')) {
+                // Reset scale
                 el.setAttribute('scale', '1 1 1');
+                
+                // Reset opacity
+                el.setAttribute('opacity', '0.8');
+                
+                // Reset color
                 el.setAttribute('color', '#667eea');
+                
                 console.log(`${controllerType} controller no longer intersecting with hotspot:`, el.id);
             }
         }
     }
 
     setupEventListeners() {
+        // Folder navigation
         document.querySelectorAll('.folder-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const folder = e.target.dataset.folder;
@@ -106,10 +126,12 @@ class VirtualTourApp {
             });
         });
 
+        // Dev mode toggle
         document.getElementById('devModeBtn').addEventListener('click', () => {
             this.toggleDevMode();
         });
 
+        // Hotspot form
         document.getElementById('save-hotspot').addEventListener('click', () => {
             this.saveHotspot();
         });
@@ -118,14 +140,17 @@ class VirtualTourApp {
             this.cancelHotspot();
         });
 
+        // Photo ordering
         document.getElementById('save-order').addEventListener('click', () => {
             this.savePhotoOrder();
         });
 
+        // Export functionality
         document.getElementById('export-data').addEventListener('click', () => {
             this.exportData();
         });
 
+        // Navigation controls
         document.getElementById('prev-image').addEventListener('click', () => {
             this.previousImage();
         });
@@ -134,6 +159,7 @@ class VirtualTourApp {
             this.nextImage();
         });
 
+        // Keyboard navigation
         document.addEventListener('keydown', (e) => {
             if (!['INPUT', 'TEXTAREA'].includes(e.target.tagName)) {
                 switch(e.key) {
@@ -159,16 +185,19 @@ class VirtualTourApp {
         this.images = [];
         this.hotspots = [];
 
+        // Load hotspots from localStorage for this folder
         this.loadHotspotsFromStorage(folderName);
 
         try {
             const imageFiles = this.getImageFilesForFolder(folderName);
-            this.updateLoadingText(`Ielādējas ${imageFiles.length} attēli no ${folderName}...`);
+            this.updateLoadingText(`Lādējas ${imageFiles.length} attēli no ${folderName}...`);
             this.updateProgress(0, imageFiles.length);
 
+            // Load current folder’s images in batches of 3
             const loadedImages = await this.loadImagesInBatches(imageFiles, folderName, 3);
             this.images = loadedImages;
 
+            // Apply saved photo order
             const savedOrder = this.loadPhotoOrderFromStorage(folderName);
             if (savedOrder?.length) {
                 const orderedImages = [];
@@ -187,6 +216,7 @@ class VirtualTourApp {
             this.updateLoadingText('Attēli ielādēti!');
             this.updateProgress(imageFiles.length, imageFiles.length);
 
+            // Start background loading of other folders
             this.preloadOtherFolders(folderName);
 
             setTimeout(() => this.hideLoading(), 500);
@@ -210,6 +240,7 @@ class VirtualTourApp {
             this.updateLoadingText(`Loading ${batch.join(', ')}...`);
             this.updateLoadingDetails(`${Math.min(i + batchSize, totalImages)} no ${totalImages} attēliem`);
 
+            // Load up to 3 concurrently
             const results = await Promise.allSettled(
                 batch.map(file => this.loadSingleImageWithCache(`./${folderName}/${file}`, file))
             );
@@ -236,7 +267,7 @@ class VirtualTourApp {
             });
 
             this.updateProgress(Math.min(i + batchSize, totalImages), totalImages);
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 100)); // slight pause
         }
 
         return loadedImages;
@@ -253,6 +284,7 @@ class VirtualTourApp {
     }
 
     async preloadOtherFolders(currentFolder) {
+        const allFolders = Object.keys(this.getImageFilesForFolder('')); // we'll tweak this next
         const folders = ['pakapiens', 'pietura', 'spaktele'];
         const otherFolders = folders.filter(f => f !== currentFolder);
 
@@ -273,6 +305,7 @@ class VirtualTourApp {
             console.log(`Finished preloading folder ${folder}`);
         }
     }
+
 
     loadSingleImage(imagePath, fileName) {
         return new Promise((resolve, reject) => {
@@ -355,177 +388,15 @@ class VirtualTourApp {
             imagesCount: this.images.length
         });
         
+        // Setup controller event listeners for VR/AR mode
         if (this.scene) {
             this.setupControllerEvents();
-            this.createVRNavigationPanel();
         }
-        
         if (this.images.length > 0) {
             this.loadCurrentImage();
         } else {
             console.warn('No images loaded yet');
         }
-    }
-    
-    startCameraRotationCheck() {
-        if (this.cameraRotationCheckInterval) {
-            clearInterval(this.cameraRotationCheckInterval);
-        }
-        
-        this.cameraRotationCheckInterval = setInterval(() => {
-            if (!this.camera || !this.camera.object3D) return;
-            
-            const cameraRotation = this.camera.object3D.rotation;
-            const pitchInDegrees = THREE.MathUtils.radToDeg(cameraRotation.x);
-            
-            if (this.vrNavigationPanel) {
-                // Show panel when looking down (pitch < -30°)
-                if (pitchInDegrees < -30) {
-                    this.vrNavigationPanel.setAttribute('visible', 'true');
-                } 
-                // Hide panel when looking back up (pitch > -20°)
-                else if (pitchInDegrees > -20) {
-                    this.vrNavigationPanel.setAttribute('visible', 'false');
-                }
-            }
-        }, 100); // Check every 100ms
-    }
-
-    // New method to stop checking camera rotation
-    stopCameraRotationCheck() {
-        if (this.cameraRotationCheckInterval) {
-            clearInterval(this.cameraRotationCheckInterval);
-            this.cameraRotationCheckInterval = null;
-        }
-    }
-
-    createVRNavigationPanel() {
-        const existingPanel = document.querySelector('#vr-navigation-panel');
-        if (existingPanel) {
-            existingPanel.remove();
-        }
-
-        const panel = document.createElement('a-entity');
-        panel.setAttribute('id', 'vr-navigation-panel');
-        panel.setAttribute('position', '0 -1.5 -2');
-        panel.setAttribute('visible', 'false');
-        
-        const background = document.createElement('a-plane');
-        background.setAttribute('width', '2.5');
-        background.setAttribute('height', '0.6');
-        background.setAttribute('color', '#1a1a2e');
-        background.setAttribute('opacity', '0.9');
-        background.setAttribute('shader', 'flat');
-        panel.appendChild(background);
-
-        const title = document.createElement('a-text');
-        title.setAttribute('value', 'SELECT TOUR');
-        title.setAttribute('align', 'center');
-        title.setAttribute('position', '0 0.2 0.01');
-        title.setAttribute('width', '2');
-        title.setAttribute('color', '#ffffff');
-        panel.appendChild(title);
-
-        const tours = [
-            { folder: 'pakapiens', label: 'Pakāpiens', position: '-0.8 -0.05 0.01' },
-            { folder: 'pietura', label: 'Pietura', position: '0 -0.05 0.01' },
-            { folder: 'spaktele', label: 'Špaktele', position: '0.8 -0.05 0.01' }
-        ];
-
-        tours.forEach(tour => {
-            const buttonGroup = document.createElement('a-entity');
-            buttonGroup.setAttribute('position', tour.position);
-            
-            // Get first image from folder for preview
-            const imageFiles = this.getImageFilesForFolder(tour.folder);
-            const previewImagePath = `./${tour.folder}/${imageFiles[0]}`;
-            
-            // Preview image plane
-            const previewPlane = document.createElement('a-plane');
-            previewPlane.setAttribute('width', '0.6');
-            previewPlane.setAttribute('height', '0.3');
-            previewPlane.setAttribute('position', '0 0.2 0.01');
-            previewPlane.setAttribute('src', previewImagePath);
-            previewPlane.setAttribute('shader', 'flat');
-            buttonGroup.appendChild(previewPlane);
-            
-            // Preview border
-            const previewBorder = document.createElement('a-plane');
-            previewBorder.setAttribute('width', '0.64');
-            previewBorder.setAttribute('height', '0.34');
-            previewBorder.setAttribute('position', '0 0.2 0.005');
-            previewBorder.setAttribute('color', this.currentFolder === tour.folder ? '#667eea' : '#444');
-            previewBorder.setAttribute('shader', 'flat');
-            buttonGroup.appendChild(previewBorder);
-            
-            const button = document.createElement('a-box');
-            button.setAttribute('width', '0.65');
-            button.setAttribute('height', '0.25');
-            button.setAttribute('depth', '0.05');
-            button.setAttribute('color', this.currentFolder === tour.folder ? '#667eea' : '#16213e');
-            button.setAttribute('class', 'vr-tour-button');
-            button.setAttribute('data-folder', tour.folder);
-            button.setAttribute('data-raycastable', '');
-            
-            const buttonText = document.createElement('a-text');
-            buttonText.setAttribute('value', tour.label);
-            buttonText.setAttribute('align', 'center');
-            buttonText.setAttribute('position', '0 0 0.03');
-            buttonText.setAttribute('width', '0.6');
-            buttonText.setAttribute('color', '#ffffff');
-            
-            button.addEventListener('mouseenter', () => {
-                if (this.currentFolder !== tour.folder) {
-                    button.setAttribute('color', '#4a5fc1');
-                    button.setAttribute('depth', '0.08');
-                }
-            });
-            
-            button.addEventListener('mouseleave', () => {
-                if (this.currentFolder !== tour.folder) {
-                    button.setAttribute('color', '#16213e');
-                    button.setAttribute('depth', '0.05');
-                }
-            });
-            
-            button.addEventListener('click', async () => {
-                console.log('VR Tour button clicked:', tour.folder);
-                await this.switchFolder(tour.folder);
-                this.updateVRNavigationPanel();
-            });
-            
-            buttonGroup.appendChild(button);
-            buttonGroup.appendChild(buttonText);
-            panel.appendChild(buttonGroup);
-        });
-
-        this.scene.appendChild(panel);
-        this.vrNavigationPanel = panel;
-        
-        console.log('VR Navigation Panel created');
-    }
-
-    updateVRNavigationPanel() {
-        if (!this.vrNavigationPanel) return;
-        
-        const buttons = this.vrNavigationPanel.querySelectorAll('.vr-tour-button');
-        buttons.forEach(button => {
-            const folder = button.getAttribute('data-folder');
-            const buttonGroup = button.parentElement;
-            const border = buttonGroup.querySelector('a-plane[height="0.34"]');
-            
-            if (folder === this.currentFolder) {
-                button.setAttribute('color', '#667eea');
-                if (border) {
-                    border.setAttribute('color', '#667eea'); // Update border color
-                }
-            } else {
-                button.setAttribute('color', '#16213e');
-                if (border) {
-                    border.setAttribute('color', '#444'); // Update border color
-                }
-            }
-        });
     }
 
     onViewModeChange(isActive) {
@@ -535,18 +406,7 @@ class VirtualTourApp {
             leftController.setAttribute('visible', isActive ? 'true' : 'false');
             rightController.setAttribute('visible', isActive ? 'true' : 'false');
         }
-        
         this.isXRMode = isActive;
-        
-        if (isActive) {
-            this.startCameraRotationCheck(); // Start monitoring
-        } else {
-            this.stopCameraRotationCheck(); // Stop monitoring
-            if (this.vrNavigationPanel) {
-                this.vrNavigationPanel.setAttribute('visible', 'false');
-            }
-        }
-        
         this.renderHotspots();
     }
 
@@ -560,6 +420,7 @@ class VirtualTourApp {
         const currentImage = this.images[this.currentImageIndex];
         console.log('Current image:', currentImage);
         
+        // Update the current image name
         this.currentImageName = currentImage.name;
         
         if (!currentImage.loaded) {
@@ -568,6 +429,7 @@ class VirtualTourApp {
             return;
         }
         
+        // Update the sky sphere with the new image
         if (this.sky) {
             console.log('Setting sky source to:', currentImage.path);
             this.sky.setAttribute('src', currentImage.path);
@@ -594,6 +456,7 @@ class VirtualTourApp {
         this.loadCurrentImage();
     }
 
+    // New function to navigate to a specific image by name
     navigateToImageByName(imageName) {
         const imageIndex = this.images.findIndex(img => img.name === imageName);
         if (imageIndex !== -1) {
@@ -626,6 +489,7 @@ class VirtualTourApp {
     }
 
     showImageError(imageData) {
+        // Create error texture for failed images
         const canvas = document.createElement('canvas');
         canvas.width = 1024;
         canvas.height = 512;
@@ -656,14 +520,10 @@ class VirtualTourApp {
         document.querySelectorAll('.folder-btn').forEach(btn => {
             btn.classList.remove('active');
         });
-        const folderBtn = document.querySelector(`[data-folder="${folderName}"]`);
-        if (folderBtn) {
-            folderBtn.classList.add('active');
-        }
+        document.querySelector(`[data-folder="${folderName}"]`).classList.add('active');
         
         await this.loadFolderImages(folderName);
         this.setupAFrame();
-        this.updateVRNavigationPanel();
     }
 
     toggleDevMode() {
@@ -682,11 +542,13 @@ class VirtualTourApp {
             btn.classList.remove('btn-secondary');
             this.createHotspotAtPosition();
 
+            // Reset form state
             this.selectedTargetImageIndex = undefined;
             const targetImageContainer = document.getElementById('hotspot-target-image-container');
             if (targetImageContainer) {
                 targetImageContainer.style.display = 'block';
             }  
+            // Populate the image preview grid
             this.populateImagePreviewGrid();
             const form = document.getElementById('dev-controls');
             console.log('Form element:', form);
@@ -706,17 +568,21 @@ class VirtualTourApp {
         
         if (!camera) return;
         
+        // Get camera's Three.js object
         const camera3D = camera.object3D;
         const cameraWorldPos = new THREE.Vector3();
         camera3D.getWorldPosition(cameraWorldPos);
         
+        // Get forward direction
         const direction = new THREE.Vector3(0, 0.65, -5);
         direction.applyQuaternion(camera3D.quaternion);
         
+        // Calculate position at configurable distance
         let distance = parseFloat(this.tempHotspotDistance || 1.0);
         
         const spherePos = cameraWorldPos.clone().add(direction.multiplyScalar(distance));
         
+        // Update test sphere position
         this.tempHotspotPosition = {
             x: spherePos.x,
             y: spherePos.y,
@@ -736,6 +602,7 @@ class VirtualTourApp {
             return;
         }
         
+        // Get the actual image name instead of using index
         const currentImageName = this.images[this.currentImageIndex].name;
         const targetImageName = this.images[this.selectedTargetImageIndex].name;
         
@@ -743,12 +610,12 @@ class VirtualTourApp {
             id: Date.now().toString(),
             position: this.tempHotspotPosition,
             imageIndex: this.currentImageIndex,
-            imageName: currentImageName,
+            imageName: currentImageName, // Store image name for better tracking
             linkType: 'image',
             targetImageIndex: this.selectedTargetImageIndex,
-            targetImageName: targetImageName,
+            targetImageName: targetImageName, // Store target image name for better tracking
             createdAt: new Date().toISOString(),
-            distance: "1.0"
+            distance: "1.0" // Default distance from camera
         };
         
         this.hotspots.push(hotspot);
@@ -756,19 +623,24 @@ class VirtualTourApp {
         console.log('Current image index:', this.currentImageIndex);
         console.log('Current image name:', currentImageName);
         
+        // Small delay to ensure A-Frame is ready
         setTimeout(() => {
             this.renderHotspots();
         }, 100);
         
+        // Clear form
         document.getElementById('hotspot-target-image-container').style.display = 'block';
         this.selectedTargetImageIndex = undefined;
         
+        // Clear selection
         document.querySelectorAll('.image-preview-item').forEach(item => {
             item.classList.remove('selected');
         });
         
+        // Save to localStorage
         this.saveHotspotsToStorage();
         
+        // Show success message
         this.showHotspotCreatedMessage();
     }
 
@@ -777,98 +649,103 @@ class VirtualTourApp {
         this.tempHotspotPosition = null;
         this.selectedTargetImageIndex = undefined;
         
+        // Clear selection
         document.querySelectorAll('.image-preview-item').forEach(item => {
             item.classList.remove('selected');
         });
     }
 
     renderHotspots() {
-        console.log('renderHotspots called, total hotspots:', this.hotspots.length);
-        const scene = document.querySelector('#aframe-scene');
-        if (!scene) return;
+    console.log('renderHotspots called, total hotspots:', this.hotspots.length);
+    const scene = document.querySelector('#aframe-scene');
+    if (!scene) return;
 
-        const existingHotspots = scene.querySelectorAll('.hotspot');
-        console.log('Removing existing hotspots:', existingHotspots.length);
-        existingHotspots.forEach(hotspot => hotspot.remove());
+    // Remove existing hotspots
+    const existingHotspots = scene.querySelectorAll('.hotspot');
+    console.log('Removing existing hotspots:', existingHotspots.length);
+    existingHotspots.forEach(hotspot => hotspot.remove());
 
-        const currentImageName = this.currentImageName;
+    const currentImageName = this.currentImageName;
 
-        const currentHotspots = this.hotspots.filter(h =>
-            h.imageName === currentImageName ||
-            (!h.imageName && h.imageIndex === this.currentImageIndex)
+    const currentHotspots = this.hotspots.filter(h =>
+        h.imageName === currentImageName ||
+        (!h.imageName && h.imageIndex === this.currentImageIndex)
+    );
+
+    console.log('Current image hotspots:', currentHotspots.length);
+
+    currentHotspots.forEach(hotspot => {
+        if (!hotspot.position || !hotspot.position.aframe) {
+        console.warn('Skipping hotspot with invalid position:', hotspot);
+        return;
+        }
+
+        const hotspotElement = document.createElement('a-sphere');
+        hotspotElement.setAttribute('position', hotspot.position.aframe);
+
+        if (this.isXRMode && this.camera && this.camera.object3D) {
+        const camPos = new THREE.Vector3();
+        this.camera.object3D.getWorldPosition(camPos);
+        const basePos = new THREE.Vector3(
+            parseFloat(hotspot.position.x),
+            parseFloat(hotspot.position.y),
+            parseFloat(hotspot.position.z)
         );
+        const vec = basePos.clone().sub(camPos).multiplyScalar(4);
+        const newPos = camPos.clone().add(vec);
+        hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y - 2} ${newPos.z}`);
+        hotspotElement.setAttribute('radius', '0.75');
+        } else {
+        hotspotElement.setAttribute('radius', '0.25');
+        }
 
-        console.log('Current image hotspots:', currentHotspots.length);
+        hotspotElement.setAttribute('color', '#667eea');
+        hotspotElement.setAttribute('opacity', '0.8');
+        hotspotElement.setAttribute('cursor-listener', '');
+        hotspotElement.setAttribute('data-hotspot-id', hotspot.id);
+        hotspotElement.setAttribute('data-raycastable', '');
+        hotspotElement.classList.add('hotspot');
 
-        currentHotspots.forEach(hotspot => {
-            if (!hotspot.position || !hotspot.position.aframe) {
-                console.warn('Skipping hotspot with invalid position:', hotspot);
-                return;
-            }
-
-            const hotspotElement = document.createElement('a-sphere');
-            hotspotElement.setAttribute('position', hotspot.position.aframe);
-
-            if (this.isXRMode && this.camera && this.camera.object3D) {
-                const camPos = new THREE.Vector3();
-                this.camera.object3D.getWorldPosition(camPos);
-                const basePos = new THREE.Vector3(
-                    parseFloat(hotspot.position.x),
-                    parseFloat(hotspot.position.y),
-                    parseFloat(hotspot.position.z)
-                );
-                const vec = basePos.clone().sub(camPos).multiplyScalar(4);
-                const newPos = camPos.clone().add(vec);
-                hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y - 2} ${newPos.z}`);
-                hotspotElement.setAttribute('radius', '0.75');
-            } else {
-                hotspotElement.setAttribute('radius', '0.25');
-            }
-
-            hotspotElement.setAttribute('color', '#667eea');
-            hotspotElement.setAttribute('opacity', '0.8');
-            hotspotElement.setAttribute('cursor-listener', '');
-            hotspotElement.setAttribute('data-hotspot-id', hotspot.id);
-            hotspotElement.setAttribute('data-raycastable', '');
-            hotspotElement.classList.add('hotspot');
-
-            hotspotElement.addEventListener('click', (event) => {
-                event.stopPropagation();
-                if (this.devMode) {
-                    this.showHotspotManagementMenu(hotspot.id, event);
-                } else {
-                    this.showHotspotInfo(hotspot.id);
-                }
-            });
-
-            hotspotElement.addEventListener('mouseenter', (event) => {
-                hotspotElement.setAttribute('scale', '1.2 1.2 1.2');
-                hotspotElement.setAttribute('opacity', '1');
-                if (this.devMode) {
-                    this.showHotspotManagementMenu(hotspot.id, event);
-                }
-            });
-
-            hotspotElement.addEventListener('mouseleave', () => {
-                hotspotElement.setAttribute('scale', '1 1 1');
-                hotspotElement.setAttribute('opacity', '0.8');
-            });
-
-            scene.appendChild(hotspotElement);
-            console.log('Added hotspot element to scene:', hotspotElement);
+        hotspotElement.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (this.devMode) {
+            this.showHotspotManagementMenu(hotspot.id, event);
+        } else {
+            this.showHotspotInfo(hotspot.id);
+        }
         });
+
+        hotspotElement.addEventListener('mouseenter', (event) => {
+        hotspotElement.setAttribute('scale', '1.2 1.2 1.2');
+        hotspotElement.setAttribute('opacity', '1');
+        if (this.devMode) {
+            this.showHotspotManagementMenu(hotspot.id, event);
+        }
+        });
+
+        hotspotElement.addEventListener('mouseleave', () => {
+        hotspotElement.setAttribute('scale', '1 1 1');
+        hotspotElement.setAttribute('opacity', '0.8');
+        });
+
+        scene.appendChild(hotspotElement);
+        console.log('Added hotspot element to scene:', hotspotElement);
+    });
     }
+
 
     showHotspotInfo(hotspotId) {
         const hotspot = this.hotspots.find(h => h.id === hotspotId);
         if (!hotspot) return;
         
+        // Navigate using targetImageName if available
         if (hotspot.targetImageName) {
             if (this.navigateToImageByName(hotspot.targetImageName)) {
                 return;
             }
         }
         
+        // Fall back to index-based navigation if name-based fails or isn't available
         if (hotspot.targetImageIndex !== null && hotspot.targetImageIndex < this.images.length) {
             this.currentImageIndex = hotspot.targetImageIndex;
             this.loadCurrentImage();
@@ -880,11 +757,12 @@ class VirtualTourApp {
         previewGrid.innerHTML = '';
         
         this.images.forEach((image, index) => {
-            if (index !== this.currentImageIndex) {
+            if (index !== this.currentImageIndex) { // Don't allow linking to current image
                 const previewItem = document.createElement('div');
                 previewItem.className = 'image-preview-item';
                 previewItem.dataset.index = index;
                 
+                // Create optimized thumbnail
                 const thumbnail = this.createOptimizedThumbnail(image);
                 
                 previewItem.innerHTML = `
@@ -893,6 +771,7 @@ class VirtualTourApp {
                     <div class="image-loading">Loading...</div>
                 `;
                 
+                // Handle image loading
                 const img = previewItem.querySelector('img');
                 const loadingDiv = previewItem.querySelector('.image-loading');
                 
@@ -906,11 +785,14 @@ class VirtualTourApp {
                     loadingDiv.style.background = 'rgba(220, 53, 69, 0.8)';
                 };
                 
+                // Add click event
                 previewItem.addEventListener('click', () => {
+                    // Remove previous selection
                     previewGrid.querySelectorAll('.image-preview-item').forEach(item => {
                         item.classList.remove('selected');
                     });
                     
+                    // Select this item
                     previewItem.classList.add('selected');
                     this.selectedTargetImageIndex = index;
                 });
@@ -921,17 +803,21 @@ class VirtualTourApp {
     }
 
     createOptimizedThumbnail(imageData) {
+        // Check if we have a cached thumbnail
         const cacheKey = `thumb_${imageData.name}`;
         if (this.imageCache.has(cacheKey)) {
             return this.imageCache.get(cacheKey);
         }
 
+        // Create canvas for thumbnail optimization
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
+        // Set thumbnail dimensions
         const maxWidth = 80;
         const maxHeight = 60;
         
+        // Calculate dimensions maintaining aspect ratio
         let { width, height } = imageData.element;
         const aspectRatio = width / height;
         
@@ -946,10 +832,13 @@ class VirtualTourApp {
         canvas.width = width;
         canvas.height = height;
         
+        // Draw optimized image
         ctx.drawImage(imageData.element, 0, 0, width, height);
         
+        // Convert to optimized data URL
         const thumbnailDataUrl = canvas.toDataURL('image/jpeg', 0.7);
         
+        // Cache the thumbnail
         this.imageCache.set(cacheKey, thumbnailDataUrl);
         
         return thumbnailDataUrl;
@@ -1025,15 +914,18 @@ class VirtualTourApp {
             const data = await response.json();
             console.log('Loading data from data.json:', data);
             
+            // Load hotspots for each folder
             if (data.hotspots) {
                 Object.keys(data.hotspots).forEach(folder => {
                     const key = `hotspots:${folder}`;
+                    // Extract just the hotspots array from the nested structure
                     const hotspotsData = data.hotspots[folder].hotspots || data.hotspots[folder];
                     localStorage.setItem(key, JSON.stringify(hotspotsData));
                 });
                 console.log('Imported hotspots from data.json');
             }
             
+            // Load photo orders for each folder
             if (data.photoOrders) {
                 Object.keys(data.photoOrders).forEach(folder => {
                     const key = `photoOrder:${folder}`;
@@ -1056,12 +948,14 @@ class VirtualTourApp {
                 exportedAt: new Date().toISOString()
             };
             
+            // Get all hotspots from localStorage
             const folders = ['pakapiens', 'pietura', 'spaktele'];
             folders.forEach(folder => {
                 const hotspotsKey = `hotspots:${folder}`;
                 const hotspotsData = localStorage.getItem(hotspotsKey);
                 if (hotspotsData) {
                     const parsedData = JSON.parse(hotspotsData);
+                    // Export only the hotspots array
                     if (Array.isArray(parsedData)) {
                         exportData.hotspots[folder] = parsedData;
                     } else if (parsedData.hotspots) {
@@ -1076,6 +970,7 @@ class VirtualTourApp {
                 }
             });
             
+            // Create and download JSON file
             const dataStr = JSON.stringify(exportData, null, 2);
             const dataBlob = new Blob([dataStr], { type: 'application/json' });
             const url = URL.createObjectURL(dataBlob);
@@ -1088,6 +983,7 @@ class VirtualTourApp {
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
             
+            // Show success message
             const messageDiv = document.createElement('div');
             messageDiv.textContent = 'Data exported successfully!';
             messageDiv.style.cssText = `
@@ -1122,6 +1018,7 @@ class VirtualTourApp {
     async saveHotspotsToStorage() {
         try {
             const key = `hotspots:${this.currentFolder}`;
+            // Save only the hotspots array for simpler format
             localStorage.setItem(key, JSON.stringify(this.hotspots));
             console.log('Hotspots saved to storage successfully');
             console.log(this.hotspots);
@@ -1157,6 +1054,7 @@ class VirtualTourApp {
             
             if (storedData) {
                 const parsedData = JSON.parse(storedData);
+                // Handle both old format (direct array) and new format (object with hotspots property)
                 if (Array.isArray(parsedData)) {
                     this.hotspots = parsedData;
                 } else if (parsedData.hotspots) {
@@ -1176,6 +1074,7 @@ class VirtualTourApp {
     }
 
     showHotspotCreatedMessage() {
+        // Create temporary success message
         const messageDiv = document.createElement('div');
         messageDiv.className = 'hotspot-success-message';
         messageDiv.textContent = `Hotspot created successfully!`;
@@ -1195,6 +1094,7 @@ class VirtualTourApp {
         
         document.body.appendChild(messageDiv);
         
+        // Remove message after 3 seconds
         setTimeout(() => {
             if (messageDiv.parentNode) {
                 messageDiv.parentNode.removeChild(messageDiv);
@@ -1206,14 +1106,17 @@ class VirtualTourApp {
         const hotspot = this.hotspots.find(h => h.id === hotspotId);
         if (!hotspot) return;
 
+        // Remove existing menu
         const existingMenu = document.getElementById('hotspot-management-menu');
         if (existingMenu) {
             existingMenu.remove();
         }
 
+        // Get mouse position or use center of screen for A-Frame events
         let mouseX = event.clientX || window.innerWidth / 2;
         let mouseY = event.clientY || window.innerHeight / 2;
         
+        // Adjust position to avoid menu going off-screen
         if (mouseX > window.innerWidth - 250) {
             mouseX = window.innerWidth - 250;
         }
@@ -1221,6 +1124,7 @@ class VirtualTourApp {
             mouseY = window.innerHeight - 200;
         }
 
+        // Create management menu
         const menu = document.createElement('div');
         menu.id = 'hotspot-management-menu';
         menu.className = 'hotspot-management-menu';
@@ -1237,6 +1141,7 @@ class VirtualTourApp {
             padding: 8px 0;
         `;
 
+        // Hotspot info
         const infoDiv = document.createElement('div');
         infoDiv.style.cssText = `
             padding: 8px 16px;
@@ -1245,6 +1150,7 @@ class VirtualTourApp {
             color: #666;
         `;
 
+        // Delete button
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = 'Delete Hotspot';
         deleteBtn.style.cssText = `
@@ -1263,6 +1169,7 @@ class VirtualTourApp {
         });
         menu.appendChild(deleteBtn);
 
+        // Distance adjustment
         const distanceDiv = document.createElement('div');
         distanceDiv.style.cssText = `
             padding: 8px 16px;
@@ -1299,6 +1206,7 @@ class VirtualTourApp {
 
         document.body.appendChild(menu);
 
+        // Add mouse leave event to the menu itself
         menu.addEventListener('mouseleave', () => {
             this.hideHotspotManagementMenu();
         });
@@ -1307,14 +1215,18 @@ class VirtualTourApp {
     deleteHotspot(hotspotId) {
         console.log('Deleting hotspot:', hotspotId);
         if (confirm('Are you sure you want to delete this hotspot?')) {
+            // Remove from hotspots array
             const initialLength = this.hotspots.length;
             this.hotspots = this.hotspots.filter(h => h.id !== hotspotId);
             console.log(`Deleted hotspot. Before: ${initialLength}, After: ${this.hotspots.length}`);
             
+            // Re-render hotspots
             this.renderHotspots();
             
+            // Save to storage
             this.saveHotspotsToStorage();
             
+            // Show deletion message
             const messageDiv = document.createElement('div');
             messageDiv.textContent = 'Hotspot deleted successfully!';
             messageDiv.style.cssText = `
@@ -1348,13 +1260,16 @@ class VirtualTourApp {
             hotspot.distance = newDistance.toString();
             console.log('Updated hotspot distance to:', hotspot.distance);
             
+            // Update the hotspot position based on new distance
             this.tempHotspotDistance = newDistance;
             this.tempHotspotPosition = hotspot.position;
             this.createHotspotAtPosition();
             hotspot.position = this.tempHotspotPosition;
             
+            // Re-render hotspots to show position change
             this.renderHotspots();
             
+            // Save to storage
             this.saveHotspotsToStorage();
         } else {
             console.error('Hotspot not found for distance update:', hotspotId);
@@ -1405,6 +1320,7 @@ class VirtualTourApp {
     }
 }
 
+// Initialize the application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.app = new VirtualTourApp();
 });
