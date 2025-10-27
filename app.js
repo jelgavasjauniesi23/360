@@ -405,6 +405,18 @@ class VirtualTourApp {
             rightController.setAttribute('visible', isActive ? 'true' : 'false');
         }
         this.isXRMode = isActive;
+        // Adjust camera height when entering/exiting XR mode
+        if (this.camera) {
+            try {
+                const targetY = isActive ? 3 : 1.65; // raise camera in XR mode
+                this.camera.setAttribute('position', `0 ${targetY} 0`);
+                if (this.camera.object3D && this.camera.object3D.position) {
+                    this.camera.object3D.position.y = targetY;
+                }
+            } catch (e) {
+                console.warn('Failed to adjust camera height for XR mode:', e);
+            }
+        }
         this.renderHotspots();
     }
 
@@ -693,12 +705,11 @@ renderHotspots() {
       const newPos = camPos.clone().add(vec);
       hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y} ${newPos.z}`);
       hotspotElement.setAttribute('radius', '0.75');
-    hotspotElement.setAttribute('color', 'red');
     } else {
       hotspotElement.setAttribute('radius', '0.25');
-    hotspotElement.setAttribute('color', '#667eea');
     }
-
+    
+    hotspotElement.setAttribute('color', '#667eea');
     hotspotElement.setAttribute('opacity', '0.8');
     hotspotElement.setAttribute('cursor-listener', '');
     hotspotElement.setAttribute('data-hotspot-id', hotspot.id);
