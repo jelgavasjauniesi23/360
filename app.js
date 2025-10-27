@@ -386,8 +386,7 @@ class VirtualTourApp {
         if (this.scene) {
             this.setupControllerEvents();
         }
-        // Setup VR menu interactions
-        this.setupVrMenu();
+        
         if (this.images.length > 0) {
             this.loadCurrentImage();
         } else {
@@ -403,16 +402,6 @@ class VirtualTourApp {
             rightController.setAttribute('visible', isActive ? 'true' : 'false');
         }
         this.isXRMode = isActive;
-        // Toggle the VR menu visibility and head-pitch watcher
-        const menu = document.querySelector('#vr-tour-switcher');
-        if (menu) {
-            menu.setAttribute('visible', isActive ? 'true' : 'false');
-        }
-        if (isActive) {
-            this.startBottomLookWatcher();
-        } else {
-            this.stopBottomLookWatcher();
-        }
         this.renderHotspots();
     }
 
@@ -446,186 +435,6 @@ class VirtualTourApp {
         this.updatePhotoOrdering();
         this.renderHotspots();
         this.updateImageCounter();
-    }
-
-    // Build the VR tour switcher menu attached to the camera
-    setupVrMenu() {
-        try {
-            const camera = document.querySelector('#main-camera');
-            if (!camera) {
-                console.warn('Camera not found, cannot create VR menu');
-                return;
-            }
-            // If already exists, skip creating again
-            if (camera.querySelector('#vr-tour-switcher')) {
-                this.vrMenuEntity = camera.querySelector('#vr-tour-switcher');
-                return;
-            }
-
-            const menu = document.createElement('a-entity');
-            menu.setAttribute('id', 'vr-tour-switcher');
-            menu.setAttribute('visible', 'false');
-            // Place slightly below and in front of the camera
-            menu.setAttribute('position', '0 -0.9 -1.4');
-            menu.setAttribute('rotation', '-45 0 0');
-
-            // A subtle background panel behind cards
-            const bg = document.createElement('a-plane');
-            bg.setAttribute('width', '3');
-            bg.setAttribute('height', '0.8');
-            bg.setAttribute('color', '#111');
-            bg.setAttribute('opacity', '0.5');
-            bg.setAttribute('position', '0 0 0');
-            bg.setAttribute('data-raycastable', '');
-            menu.appendChild(bg);
-
-            // Define tours (folders) and display names
-            const tours = [
-                { key: 'pakapiens', label: 'Pakapiens' },
-                { key: 'pietura', label: 'Pietura' },
-                { key: 'spaktele', label: 'Spaktele' }
-            ];
-
-            // Layout parameters
-            const startX = -0.9; // leftmost card center x
-            const gap = 0.9;     // horizontal spacing
-
-            tours.forEach((tour, i) => {
-                const group = document.createElement('a-entity');
-                group.setAttribute('position', `${startX + i * gap} 0 0.01`);
-
-                // Card preview (thumbnail)
-                const card = document.createElement('a-plane');
-                card.setAttribute('width', '0.8');
-                card.setAttribute('height', '0.45');
-                card.setAttribute('color', '#222');
-                card.setAttribute('opacity', '0.5');
-                card.setAttribute('position', '0 0.12 0');
-                card.setAttribute('data-raycastable', '');
-
-                // Try to use first image in the folder as thumbnail
-                try {
-                    const files = this.getImageFilesForFolder(tour.key) || [];
-                    if (files.length) {
-                        const thumbPath = `./${tour.key}/${files[0]}`;
-                        card.setAttribute('material', `src: ${thumbPath}; color: white; shader: flat`);
-                    } else {
-                        card.setAttribute('material', 'color: #333');
-                    }
-                } catch (e) {
-                    card.setAttribute('material', 'color: #333');
-                }
-
-                // Card border/outline
-                const border = document.createElement('a-plane');
-                border.setAttribute('width', '0.82');
-                border.setAttribute('height', '0.47');
-                border.setAttribute('color', '#667eea');
-                border.setAttribute('opacity', '0.25');
-                border.setAttribute('position', '0 0.12 -0.001');
-                border.setAttribute('data-raycastable', '');
-
-                // Label text under the card
-                const label = document.createElement('a-text');
-                label.setAttribute('value', tour.label);
-                label.setAttribute('align', 'center');
-                label.setAttribute('color', '#fff');
-                label.setAttribute('width', '1.2');
-                label.setAttribute('position', '0 -0.2 0');
-                label.setAttribute('font', 'https://cdn.aframe.io/fonts/DejaVu-sdf.fnt');
-                label.setAttribute('shader', 'msdf');
-                label.setAttribute('data-raycastable', '');
-
-                // Click handler to switch folder
-                const handleClick = (ev) => {
-                    ev.stopPropagation();
-                    try {
-                        this.switchFolder(tour.key);
-                    } catch (e) {
-                        console.warn('Failed to switch folder from VR menu:', e);
-                    }
-                };
-                card.addEventListener('click', handleClick);
-                label.addEventListener('click', handleClick);
-                border.addEventListener('click', handleClick);
-
-                // Hover affordance
-                const onEnter = () => {
-                    border.setAttribute('opacity', '0.5');
-                    border.setAttribute('color', '#8aa2ff');
-                };
-                const onLeave = () => {
-                    border.setAttribute('opacity', '0.25');
-                    border.setAttribute('color', '#667eea');
-                };
-                card.addEventListener('mouseenter', onEnter);
-                card.addEventListener('mouseleave', onLeave);
-                label.addEventListener('mouseenter', onEnter);
-                label.addEventListener('mouseleave', onLeave);
-                border.addEventListener('mouseenter', onEnter);
-                border.addEventListener('mouseleave', onLeave);
-
-                group.appendChild(border);
-                group.appendChild(card);
-                group.appendChild(label);
-                menu.appendChild(group);
-            });
-
-            camera.appendChild(menu);
-            this.vrMenuEntity = menu;
-        } catch (e) {
-            console.warn('Error setting up VR menu:', e);
-        }
-    }
-
-// Watch camera pitch; show menu only when looking down in XR
-    startBottomLookWatcher() {
-        if (this.bottomLookRAF) return;
-
-        const menu = document.querySelector('#vr-tour-switcher');
-        const cameraEl = document.querySelector('#main-camera');
-        if (!menu || !cameraEl) return;
-
-        const cameraObj = cameraEl.object3D;
-        const renderer = this.el.sceneEl.renderer;
-
-        const loop = () => {
-            // Hide if not in XR mode
-            if (!this.isXRMode) {
-                menu.setAttribute('visible', 'false');
-                this.bottomLookRAF = null;
-                renderer.setAnimationLoop(null);
-                return;
-            }
-
-            // Get camera forward direction in world space
-            const forward = new THREE.Vector3(0, 0, -1);
-            forward.applyQuaternion(cameraObj.getWorldQuaternion(new THREE.Quaternion())).normalize();
-
-            // If camera is pitched down enough, show the menu
-            const lookingDown = forward.y < -0.5; // adjust threshold if needed (-0.3 = more sensitive)
-            menu.setAttribute('visible', lookingDown ? 'true' : 'false');
-        };
-
-        // Use XR-safe animation loop
-        renderer.setAnimationLoop(loop);
-        this.bottomLookRAF = true;
-    }
-
-    // Stop watching camera pitch and hide menu
-    stopBottomLookWatcher() {
-        const renderer = this.el?.sceneEl?.renderer;
-
-        if (renderer && renderer.setAnimationLoop) {
-            renderer.setAnimationLoop(null);
-        }
-
-        this.bottomLookRAF = null;
-
-        const menu = document.querySelector('#vr-tour-switcher');
-        if (menu) {
-            menu.setAttribute('visible', 'false');
-        }
     }
 
     nextImage() {
