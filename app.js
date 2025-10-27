@@ -410,7 +410,7 @@ class VirtualTourApp {
         // Adjust camera height when entering/exiting XR mode
         if (this.camera) {
             try {
-                const targetY = isActive ? 3 : 1.65; // raise camera in XR mode
+                const targetY = isActive ? 10 : 1.65; // raise camera in XR mode
                 this.camera.setAttribute('position', `0 ${targetY} 0`);
                 if (this.camera.object3D && this.camera.object3D.position) {
                     this.camera.object3D.position.y = targetY;
