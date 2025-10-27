@@ -532,7 +532,7 @@ class VirtualTourApp {
                 label.setAttribute('color', '#fff');
                 label.setAttribute('width', '1.2');
                 label.setAttribute('position', '0 -0.2 0');
-                label.setAttribute('font', 'https://cdn.aframe.io/fonts/Roboto-msdf.json');
+                label.setAttribute('font', 'Roboto-msdf.json');
                 label.setAttribute('shader', 'msdf');
                 label.setAttribute('data-raycastable', '');
 
