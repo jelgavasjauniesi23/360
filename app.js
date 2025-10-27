@@ -71,14 +71,14 @@ class VirtualTourApp {
             
             // Check if this is a hotspot
             if (el.classList && el.classList.contains('hotspot')) {
-                // Visual feedback - scale up the hotspot
-                el.setAttribute('scale', '1.2 1.2 1.2');
+                // // Visual feedback - scale up the hotspot
+                // el.setAttribute('scale', '1.2 1.2 1.2');
                 
-                // Change opacity to indicate hover
-                el.setAttribute('opacity', '1.0');
+                // // Change opacity to indicate hover
+                // el.setAttribute('opacity', '1.0');
                 
-                // Change color to indicate hover
-                el.setAttribute('color', '#ff9500');
+                // // Change color to indicate hover
+                // el.setAttribute('color', '#ff9500');
                 
                 console.log(`${controllerType} controller intersecting with hotspot:`, el.id);
             }
@@ -95,14 +95,14 @@ class VirtualTourApp {
             
             // Check if this is a hotspot
             if (el.classList && el.classList.contains('hotspot')) {
-                // Reset scale
-                el.setAttribute('scale', '1 1 1');
+                // // Reset scale
+                // el.setAttribute('scale', '1 1 1');
                 
-                // Reset opacity
-                el.setAttribute('opacity', '0.8');
+                // // Reset opacity
+                // el.setAttribute('opacity', '0.8');
                 
-                // Reset color
-                el.setAttribute('color', '#667eea');
+                // // Reset color
+                // el.setAttribute('color', '#667eea');
                 
                 console.log(`${controllerType} controller no longer intersecting with hotspot:`, el.id);
             }
@@ -398,61 +398,6 @@ class VirtualTourApp {
         } else {
             console.warn('No images loaded yet');
         }
-    }
-    
-    setupControllerEvents() {
-        // Get controller entities
-        const leftController = document.querySelector('#left-controller');
-        const rightController = document.querySelector('#right-controller');
-        
-        if (leftController) {
-            leftController.addEventListener('raycaster-intersection', (e) => {
-                console.log('Left controller intersection:', e.detail.els);
-                this.handleControllerIntersection(e, 'left');
-            });
-            
-            leftController.addEventListener('raycaster-intersection-cleared', (e) => {
-                this.handleControllerIntersectionCleared(e, 'left');
-            });
-        }
-        
-        if (rightController) {
-            rightController.addEventListener('raycaster-intersection', (e) => {
-                console.log('Right controller intersection:', e.detail.els);
-                this.handleControllerIntersection(e, 'right');
-            });
-            
-            rightController.addEventListener('raycaster-intersection-cleared', (e) => {
-                this.handleControllerIntersectionCleared(e, 'right');
-            });
-        }
-    }
-    
-    handleControllerIntersection(event, hand) {
-        const intersectedEls = event.detail.els;
-        
-        // Check if any of the intersected elements are hotspots
-        intersectedEls.forEach(el => {
-            if (el.classList.contains('hotspot')) {
-                // Visual feedback for intersection
-                el.setAttribute('scale', '1.2 1.2 1.2');
-                el.setAttribute('opacity', '1');
-                el.setAttribute('color', '#ff9500'); // Highlight color
-            }
-        });
-    }
-    
-    handleControllerIntersectionCleared(event, hand) {
-        const clearedEls = event.detail.clearedEls;
-        
-        // Reset visual state for elements that are no longer intersected
-        clearedEls.forEach(el => {
-            if (el.classList.contains('hotspot')) {
-                el.setAttribute('scale', '1 1 1');
-                el.setAttribute('opacity', '0.8');
-                el.setAttribute('color', '#667eea'); // Reset to original color
-            }
-        });
     }
 
     loadCurrentImage() {
