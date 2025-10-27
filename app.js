@@ -705,7 +705,7 @@ renderHotspots() {
       );
       const vec = basePos.clone().sub(camPos).multiplyScalar(4);
       const newPos = camPos.clone().add(vec);
-      hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y - 3} ${newPos.z}`);
+      hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y - 2} ${newPos.z}`);
       hotspotElement.setAttribute('radius', '0.75');
     } else {
       hotspotElement.setAttribute('radius', '0.25');
