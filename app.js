@@ -466,16 +466,17 @@ class VirtualTourApp {
             menu.setAttribute('id', 'vr-tour-switcher');
             menu.setAttribute('visible', 'false');
             // Place slightly below and in front of the camera
-            menu.setAttribute('position', '0 -0.7 -1.4');
+            menu.setAttribute('position', '0 -1 -1.4');
 
             // A subtle background panel behind cards
             const bg = document.createElement('a-plane');
-            bg.setAttribute('width', '2.6');
-            bg.setAttribute('height', '0.9');
+            bg.setAttribute('width', '3');
+            bg.setAttribute('height', '0.8');
             bg.setAttribute('color', '#111');
-            bg.setAttribute('opacity', '0.6');
+            bg.setAttribute('opacity', '0.5');
             bg.setAttribute('position', '0 0 0');
             bg.setAttribute('data-raycastable', '');
+            bg.setAttribute('rotation', '-20 0 0');
             menu.appendChild(bg);
 
             // Define tours (folders) and display names
@@ -531,6 +532,8 @@ class VirtualTourApp {
                 label.setAttribute('color', '#fff');
                 label.setAttribute('width', '1.2');
                 label.setAttribute('position', '0 -0.2 0');
+                label.setAttribute('font', 'https://cdn.aframe.io/fonts/Roboto-msdf.json');
+                label.setAttribute('shader', 'msdf');
                 label.setAttribute('data-raycastable', '');
 
                 // Click handler to switch folder
@@ -577,34 +580,56 @@ class VirtualTourApp {
 
     // Watch camera pitch; show menu only when looking down in XR
     startBottomLookWatcher() {
-        if (this.bottomLookRAF) return; // already running
-        const camera = document.querySelector('#main-camera');
+        if (this.bottomLookRAF) return;
+
         const menu = document.querySelector('#vr-tour-switcher');
-        if (!camera || !menu) return;
+        if (!menu) return;
 
         const tmpForward = new THREE.Vector3(0, 0, -1);
-        const loop = () => {
+        const renderer = this.el.sceneEl.renderer;
+        const loop = (t, frame) => {
             if (!this.isXRMode) {
                 menu.setAttribute('visible', 'false');
                 this.bottomLookRAF = null;
                 return;
             }
-            // Compute forward vector and check Y component to detect looking down
-            const q = camera.object3D.quaternion;
-            const forward = tmpForward.clone().applyQuaternion(q).normalize();
-            // Threshold: forward.y < -0.5 ~ more than ~30° down
-            const lookingDown = forward.y < -0.5;
-            menu.setAttribute('visible', lookingDown ? 'true' : 'false');
-            this.bottomLookRAF = requestAnimationFrame(loop);
+
+            const session = renderer.xr.getSession();
+            if (session && frame) {
+                const pose = frame.getViewerPose(renderer.xr.getReferenceSpace());
+                if (pose) {
+                    const orientation = pose.transform.orientation;
+                    const q = new THREE.Quaternion(
+                        orientation.x,
+                        orientation.y,
+                        orientation.z,
+                        orientation.w
+                    );
+                    const forward = tmpForward.clone().applyQuaternion(q).normalize();
+                    const lookingDown = forward.y < -0.5;
+                    menu.setAttribute('visible', lookingDown ? 'true' : 'false');
+                }
+            }
+
+            this.bottomLookRAF = renderer.setAnimationLoop(loop);
         };
-        this.bottomLookRAF = requestAnimationFrame(loop);
+
+        this.bottomLookRAF = renderer.setAnimationLoop(loop);
     }
 
     stopBottomLookWatcher() {
-        if (this.bottomLookRAF) {
+        const renderer = this.el?.sceneEl?.renderer;
+
+        if (renderer && renderer.setAnimationLoop && this.bottomLookRAF) {
+            // If using WebXR loop
+            renderer.setAnimationLoop(null);
+        } else if (this.bottomLookRAF) {
+            // If using desktop RAF
             cancelAnimationFrame(this.bottomLookRAF);
-            this.bottomLookRAF = null;
         }
+
+        this.bottomLookRAF = null;
+
         const menu = document.querySelector('#vr-tour-switcher');
         if (menu) {
             menu.setAttribute('visible', 'false');
