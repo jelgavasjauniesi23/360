@@ -68,7 +68,7 @@ class VirtualTourApp {
         
         console.log('Controller events set up successfully');
     }
-    
+
     handleControllerIntersection(event, controllerType) {
         // Get the intersected elements
         const intersectedEls = event.detail.els;
@@ -81,9 +81,6 @@ class VirtualTourApp {
             if (el.classList && el.classList.contains('hotspot')) {
                 // Visual feedback - scale up the hotspot
                 el.setAttribute('scale', '1.2 1.2 1.2');
-                
-                // Change opacity to indicate hover
-                el.setAttribute('opacity', '1.0');
                 
                 // Change color to indicate hover
                 el.setAttribute('color', '#ff9500');
@@ -105,9 +102,6 @@ class VirtualTourApp {
             if (el.classList && el.classList.contains('hotspot')) {
                 // Reset scale
                 el.setAttribute('scale', '1 1 1');
-                
-                // Reset opacity
-                el.setAttribute('opacity', '0.8');
                 
                 // Reset color
                 el.setAttribute('color', '#667eea');
@@ -392,6 +386,8 @@ class VirtualTourApp {
         if (this.scene) {
             this.setupControllerEvents();
         }
+        // Setup VR menu interactions
+        this.setupVrMenu();
         if (this.images.length > 0) {
             this.loadCurrentImage();
         } else {
@@ -419,6 +415,11 @@ class VirtualTourApp {
         //     }
         // }
         this.isXRMode = isActive;
+        // Toggle the VR menu visibility
+        const menu = document.querySelector('#vr-tour-switcher');
+        if (menu) {
+            menu.setAttribute('visible', isActive ? 'true' : 'false');
+        }
         this.renderHotspots();
     }
 
