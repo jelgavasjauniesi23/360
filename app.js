@@ -438,6 +438,7 @@ class VirtualTourApp {
         
         this.renderHotspots();
     }
+
     loadCurrentImage() {
         console.log('Loading current image...', this.currentImageIndex);
         if (this.images.length === 0) {
@@ -591,7 +592,7 @@ class VirtualTourApp {
         }
     }
 
-createHotspotAtPosition() {
+    createHotspotAtPosition() {
         const camera = document.querySelector('#main-camera');
         
         if (!camera) return;
@@ -601,21 +602,14 @@ createHotspotAtPosition() {
         const cameraWorldPos = new THREE.Vector3();
         camera3D.getWorldPosition(cameraWorldPos);
         
-        // Get forward direction (only horizontal plane)
-        const direction = new THREE.Vector3(0, 0, -1);
+        // Get forward direction
+        const direction = new THREE.Vector3(0, 0.65, -5);
         direction.applyQuaternion(camera3D.quaternion);
-        
-        // Zero out the Y component to keep hotspots on horizontal plane
-        direction.y = 0;
-        direction.normalize();
         
         // Calculate position at configurable distance
         let distance = parseFloat(this.tempHotspotDistance || 1.0);
         
         const spherePos = cameraWorldPos.clone().add(direction.multiplyScalar(distance));
-        
-        // Fix the height at camera's Y position (typically 1.65)
-        spherePos.y = cameraWorldPos.y;
         
         // Update test sphere position
         this.tempHotspotPosition = {
