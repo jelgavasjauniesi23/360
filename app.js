@@ -402,18 +402,6 @@ class VirtualTourApp {
             leftController.setAttribute('visible', isActive ? 'true' : 'false');
             rightController.setAttribute('visible', isActive ? 'true' : 'false');
         }
-        // Adjust camera height when entering/exiting XR mode
-        // if (this.camera) {
-        //     try {
-        //         const targetY = isActive ? 10 : 1.65; // raise camera in XR mode
-        //         this.camera.setAttribute('position', `0 ${targetY} 0`);
-        //         if (this.camera.object3D && this.camera.object3D.position) {
-        //             this.camera.object3D.position.y = targetY;
-        //         }
-        //     } catch (e) {
-        //         console.warn('Failed to adjust camera height for XR mode:', e);
-        //     }
-        // }
         this.isXRMode = isActive;
         // Toggle the VR menu visibility and head-pitch watcher
         const menu = document.querySelector('#vr-tour-switcher');
@@ -478,7 +466,7 @@ class VirtualTourApp {
             menu.setAttribute('id', 'vr-tour-switcher');
             menu.setAttribute('visible', 'false');
             // Place slightly below and in front of the camera
-            menu.setAttribute('position', '0 -0.7 -1.4');
+            menu.setAttribute('position', '0 -2 -1.4');
 
             // A subtle background panel behind cards
             const bg = document.createElement('a-plane');
@@ -510,7 +498,7 @@ class VirtualTourApp {
                 card.setAttribute('width', '0.8');
                 card.setAttribute('height', '0.45');
                 card.setAttribute('color', '#222');
-                card.setAttribute('opacity', '0.95');
+                card.setAttribute('opacity', '0.5');
                 card.setAttribute('position', '0 0.12 0');
                 card.setAttribute('data-raycastable', '');
 
@@ -605,7 +593,7 @@ class VirtualTourApp {
             const q = camera.object3D.quaternion;
             const forward = tmpForward.clone().applyQuaternion(q).normalize();
             // Threshold: forward.y < -0.5 ~ more than ~30° down
-            const lookingDown = forward.y < -0.5;
+            const lookingDown = forward.y < -1;
             menu.setAttribute('visible', lookingDown ? 'true' : 'false');
             this.bottomLookRAF = requestAnimationFrame(loop);
         };
