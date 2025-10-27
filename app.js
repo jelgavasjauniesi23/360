@@ -406,19 +406,19 @@ class VirtualTourApp {
             leftController.setAttribute('visible', isActive ? 'true' : 'false');
             rightController.setAttribute('visible', isActive ? 'true' : 'false');
         }
-        this.isXRMode = isActive;
         // Adjust camera height when entering/exiting XR mode
-        if (this.camera) {
-            try {
-                const targetY = isActive ? 10 : 1.65; // raise camera in XR mode
-                this.camera.setAttribute('position', `0 ${targetY} 0`);
-                if (this.camera.object3D && this.camera.object3D.position) {
-                    this.camera.object3D.position.y = targetY;
-                }
-            } catch (e) {
-                console.warn('Failed to adjust camera height for XR mode:', e);
-            }
-        }
+        // if (this.camera) {
+        //     try {
+        //         const targetY = isActive ? 10 : 1.65; // raise camera in XR mode
+        //         this.camera.setAttribute('position', `0 ${targetY} 0`);
+        //         if (this.camera.object3D && this.camera.object3D.position) {
+        //             this.camera.object3D.position.y = targetY;
+        //         }
+        //     } catch (e) {
+        //         console.warn('Failed to adjust camera height for XR mode:', e);
+        //     }
+        // }
+        this.isXRMode = isActive;
         this.renderHotspots();
     }
 
