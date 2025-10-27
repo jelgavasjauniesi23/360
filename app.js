@@ -645,103 +645,85 @@ class VirtualTourApp {
         });
     }
 
-    renderHotspots() {
-        console.log('renderHotspots called, total hotspots:', this.hotspots.length);
-        const scene = document.querySelector('#aframe-scene');
-        if (!scene) return;
-                AFRAME.registerComponent('fixed-to-camera', {
-        tick: function () {
-            const cam = document.querySelector('[camera]');
-            if (cam) {
-            const camRot = cam.getAttribute('rotation');
-            this.el.object3D.rotation.set(0, camRot.y * Math.PI / 180, 0);
-            }
-        }
-        });
-        // Remove existing hotspots
-        const existingHotspots = scene.querySelectorAll('.hotspot');
-        console.log('Removing existing hotspots:', existingHotspots.length);
-        existingHotspots.forEach(hotspot => {
-            console.log('Removing hotspot element:', hotspot);
-            hotspot.remove();
-        });
-        
-        // Get current image name
-        const currentImageName = this.currentImageName;
-        
-        // Only show hotspots for current image - prioritize name-based matching
-        const currentHotspots = this.hotspots.filter(h => {
-            return h.imageName === currentImageName || 
-                  (!h.imageName && h.imageIndex === this.currentImageIndex);
-        });
-        
-        console.log('Current image hotspots:', currentHotspots.length);
-        console.log('Current image name:', currentImageName);
-        
-        currentHotspots.forEach(hotspot => {
-            if (!hotspot.position || !hotspot.position.aframe) {
-                console.warn('Skipping hotspot with invalid position:', hotspot);
-                return;
-            }
+renderHotspots() {
+  console.log('renderHotspots called, total hotspots:', this.hotspots.length);
+  const scene = document.querySelector('#aframe-scene');
+  if (!scene) return;
 
-            const hotspotElement = document.createElement('a-sphere');
-            hotspotElement.setAttribute('position', hotspot.position.aframe);
-            // Adjust position for XR mode: double distance from camera
-            if (this.isXRMode && this.camera && this.camera.object3D) {
-                const camPos = new THREE.Vector3();
-                this.camera.object3D.getWorldPosition(camPos);
-                const basePos = new THREE.Vector3(
-                    parseFloat(hotspot.position.x),
-                    parseFloat(hotspot.position.y),
-                    parseFloat(hotspot.position.z)
-                );
-                const vec = basePos.clone().sub(camPos).multiplyScalar(4);
-                const newPos = camPos.clone().add(vec);
-                hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y} ${newPos.z}`);
-                hotspotElement.setAttribute('radius', '1');
-            }else {
-                hotspotElement.setAttribute('radius', '0.25');
-            }
-            hotspotElement.setAttribute('fixed-to-camera', '');
-            hotspotElement.setAttribute('color', '#667eea');
-            hotspotElement.setAttribute('opacity', '0.8');
-            hotspotElement.setAttribute('cursor-listener', '');
-            hotspotElement.setAttribute('data-hotspot-id', hotspot.id);
-            hotspotElement.setAttribute('data-raycastable', '');
-            hotspotElement.classList.add('hotspot');
-            
-            // Add click event - prevent navigation in dev mode
-            hotspotElement.addEventListener('click', (event) => {
-                event.stopPropagation();
-                if (this.devMode) {
-                    // In dev mode, show management menu instead of navigating
-                    this.showHotspotManagementMenu(hotspot.id, event);
-                } else {
-                    // In normal mode, navigate to target
-                    this.showHotspotInfo(hotspot.id);
-                }
-            });
-            
-            // Add hover effects and management menu in dev mode
-            hotspotElement.addEventListener('mouseenter', () => {
-                hotspotElement.setAttribute('scale', '1.2 1.2 1.2');
-                hotspotElement.setAttribute('opacity', '1');
-                
-                // Show management menu in dev mode on hover
-                if (this.devMode) {
-                    this.showHotspotManagementMenu(hotspot.id, event);
-                }
-            });
-            
-            hotspotElement.addEventListener('mouseleave', () => {
-                hotspotElement.setAttribute('scale', '1 1 1');
-                hotspotElement.setAttribute('opacity', '0.8');
-            });
-            
-            scene.appendChild(hotspotElement);
-            console.log('Added hotspot element to scene:', hotspotElement);
-        });
+  // Remove existing hotspots
+  const existingHotspots = scene.querySelectorAll('.hotspot');
+  console.log('Removing existing hotspots:', existingHotspots.length);
+  existingHotspots.forEach(hotspot => hotspot.remove());
+
+  const currentImageName = this.currentImageName;
+
+  const currentHotspots = this.hotspots.filter(h =>
+    h.imageName === currentImageName ||
+    (!h.imageName && h.imageIndex === this.currentImageIndex)
+  );
+
+  console.log('Current image hotspots:', currentHotspots.length);
+
+  currentHotspots.forEach(hotspot => {
+    if (!hotspot.position || !hotspot.position.aframe) {
+      console.warn('Skipping hotspot with invalid position:', hotspot);
+      return;
     }
+
+    const hotspotElement = document.createElement('a-sphere');
+    hotspotElement.setAttribute('position', hotspot.position.aframe);
+
+    if (this.isXRMode && this.camera && this.camera.object3D) {
+      const camPos = new THREE.Vector3();
+      this.camera.object3D.getWorldPosition(camPos);
+      const basePos = new THREE.Vector3(
+        parseFloat(hotspot.position.x),
+        parseFloat(hotspot.position.y),
+        parseFloat(hotspot.position.z)
+      );
+      const vec = basePos.clone().sub(camPos).multiplyScalar(4);
+      const newPos = camPos.clone().add(vec);
+      hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y} ${newPos.z}`);
+      hotspotElement.setAttribute('radius', '0.75');
+    } else {
+      hotspotElement.setAttribute('radius', '0.25');
+    }
+
+    hotspotElement.setAttribute('fixed-to-camera', '');
+    hotspotElement.setAttribute('color', '#667eea');
+    hotspotElement.setAttribute('opacity', '0.8');
+    hotspotElement.setAttribute('cursor-listener', '');
+    hotspotElement.setAttribute('data-hotspot-id', hotspot.id);
+    hotspotElement.setAttribute('data-raycastable', '');
+    hotspotElement.classList.add('hotspot');
+
+    hotspotElement.addEventListener('click', (event) => {
+      event.stopPropagation();
+      if (this.devMode) {
+        this.showHotspotManagementMenu(hotspot.id, event);
+      } else {
+        this.showHotspotInfo(hotspot.id);
+      }
+    });
+
+    hotspotElement.addEventListener('mouseenter', (event) => {
+      hotspotElement.setAttribute('scale', '1.2 1.2 1.2');
+      hotspotElement.setAttribute('opacity', '1');
+      if (this.devMode) {
+        this.showHotspotManagementMenu(hotspot.id, event);
+      }
+    });
+
+    hotspotElement.addEventListener('mouseleave', () => {
+      hotspotElement.setAttribute('scale', '1 1 1');
+      hotspotElement.setAttribute('opacity', '0.8');
+    });
+
+    scene.appendChild(hotspotElement);
+    console.log('Added hotspot element to scene:', hotspotElement);
+  });
+}
+
 
     showHotspotInfo(hotspotId) {
         const hotspot = this.hotspots.find(h => h.id === hotspotId);
@@ -1327,6 +1309,18 @@ class VirtualTourApp {
             progressText.textContent = `${percentage}%`;
         }
     }
+}
+
+if (!AFRAME.components['fixed-to-camera']) {
+  AFRAME.registerComponent('fixed-to-camera', {
+    tick: function () {
+      const cam = document.querySelector('[camera]');
+      if (cam) {
+        const camRot = cam.getAttribute('rotation');
+        this.el.object3D.rotation.set(0, camRot.y * Math.PI / 180, 0);
+      }
+    }
+  });
 }
 
 // Initialize the application when DOM is loaded
