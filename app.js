@@ -466,7 +466,7 @@ class VirtualTourApp {
             menu.setAttribute('id', 'vr-tour-switcher');
             menu.setAttribute('visible', 'false');
             // Place slightly below and in front of the camera
-            menu.setAttribute('position', '0 -2 -1.4');
+            menu.setAttribute('position', '0 -0.7 -1.4');
 
             // A subtle background panel behind cards
             const bg = document.createElement('a-plane');
@@ -593,7 +593,7 @@ class VirtualTourApp {
             const q = camera.object3D.quaternion;
             const forward = tmpForward.clone().applyQuaternion(q).normalize();
             // Threshold: forward.y < -0.5 ~ more than ~30° down
-            const lookingDown = forward.y < -1;
+            const lookingDown = forward.y < -0.5;
             menu.setAttribute('visible', lookingDown ? 'true' : 'false');
             this.bottomLookRAF = requestAnimationFrame(loop);
         };
