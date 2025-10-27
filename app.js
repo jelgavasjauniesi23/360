@@ -742,14 +742,15 @@ class VirtualTourApp {
                     parseFloat(hotspot.position.y),
                     parseFloat(hotspot.position.z)
                 );
-                const vec = basePos.clone().sub(camPos).multiplyScalar(4);
+                const vec = basePos.clone().sub(camPos).multiplyScalar(8);
                 const newPos = camPos.clone().add(vec);
                 hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y} ${newPos.z}`);
-                hotspotElement.setAttribute('radius', '1');
+                hotspotElement.setAttribute('radius', '2');
+            hotspotElement.setAttribute('color', 'red');
             }else {
                 hotspotElement.setAttribute('radius', '0.25');
-            }
             hotspotElement.setAttribute('color', '#667eea');
+            }
             hotspotElement.setAttribute('opacity', '0.8');
             hotspotElement.setAttribute('cursor-listener', '');
             hotspotElement.setAttribute('data-hotspot-id', hotspot.id);
