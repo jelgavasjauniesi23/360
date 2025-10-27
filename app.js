@@ -476,7 +476,7 @@ class VirtualTourApp {
             bg.setAttribute('opacity', '0.5');
             bg.setAttribute('position', '0 0 0');
             bg.setAttribute('data-raycastable', '');
-            bg.setAttribute('rotation', '-20 0 0');
+            bg.setAttribute('rotation', '-45 0 0');
             menu.appendChild(bg);
 
             // Define tours (folders) and display names
