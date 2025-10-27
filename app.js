@@ -71,14 +71,14 @@ class VirtualTourApp {
             
             // Check if this is a hotspot
             if (el.classList && el.classList.contains('hotspot')) {
-                // // Visual feedback - scale up the hotspot
-                // el.setAttribute('scale', '1.2 1.2 1.2');
+                // Visual feedback - scale up the hotspot
+                el.setAttribute('scale', '1.2 1.2 1.2');
                 
-                // // Change opacity to indicate hover
-                // el.setAttribute('opacity', '1.0');
+                // Change opacity to indicate hover
+                el.setAttribute('opacity', '1.0');
                 
-                // // Change color to indicate hover
-                // el.setAttribute('color', '#ff9500');
+                // Change color to indicate hover
+                el.setAttribute('color', '#ff9500');
                 
                 console.log(`${controllerType} controller intersecting with hotspot:`, el.id);
             }
@@ -95,14 +95,14 @@ class VirtualTourApp {
             
             // Check if this is a hotspot
             if (el.classList && el.classList.contains('hotspot')) {
-                // // Reset scale
-                // el.setAttribute('scale', '1 1 1');
+                // Reset scale
+                el.setAttribute('scale', '1 1 1');
                 
-                // // Reset opacity
-                // el.setAttribute('opacity', '0.8');
+                // Reset opacity
+                el.setAttribute('opacity', '0.8');
                 
-                // // Reset color
-                // el.setAttribute('color', '#667eea');
+                // Reset color
+                el.setAttribute('color', '#667eea');
                 
                 console.log(`${controllerType} controller no longer intersecting with hotspot:`, el.id);
             }
@@ -647,9 +647,17 @@ class VirtualTourApp {
 
     renderHotspots() {
         console.log('renderHotspots called, total hotspots:', this.hotspots.length);
-        const scene = document.querySelector('#aframe-scene');
+        const scene = document.querySelector('#image-container') || document.querySelector('a-sky');
         if (!scene) return;
-        
+                AFRAME.registerComponent('fixed-to-camera', {
+        tick: function () {
+            const cam = document.querySelector('[camera]');
+            if (cam) {
+            const camRot = cam.getAttribute('rotation');
+            this.el.object3D.rotation.set(0, camRot.y * Math.PI / 180, 0);
+            }
+        }
+});
         // Remove existing hotspots
         const existingHotspots = scene.querySelectorAll('.hotspot');
         console.log('Removing existing hotspots:', existingHotspots.length);
@@ -687,15 +695,15 @@ class VirtualTourApp {
                     parseFloat(hotspot.position.y),
                     parseFloat(hotspot.position.z)
                 );
-                const vec = basePos.clone().sub(camPos).multiplyScalar(8);
+                const vec = basePos.clone().sub(camPos).multiplyScalar(4);
                 const newPos = camPos.clone().add(vec);
                 hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y} ${newPos.z}`);
-                hotspotElement.setAttribute('radius', '2');
-            hotspotElement.setAttribute('color', 'red');
+                hotspotElement.setAttribute('radius', '1');
             }else {
                 hotspotElement.setAttribute('radius', '0.25');
-            hotspotElement.setAttribute('color', '#667eea');
             }
+            hotspotElement.setAttribute('fixed-to-camera', '');
+            hotspotElement.setAttribute('color', '#667eea');
             hotspotElement.setAttribute('opacity', '0.8');
             hotspotElement.setAttribute('cursor-listener', '');
             hotspotElement.setAttribute('data-hotspot-id', hotspot.id);
