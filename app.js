@@ -467,6 +467,7 @@ class VirtualTourApp {
             menu.setAttribute('visible', 'false');
             // Place slightly below and in front of the camera
             menu.setAttribute('position', '0 -1 -1.4');
+            menu.setAttribute('rotation', '45 0 0');
 
             // A subtle background panel behind cards
             const bg = document.createElement('a-plane');
@@ -476,7 +477,6 @@ class VirtualTourApp {
             bg.setAttribute('opacity', '0.5');
             bg.setAttribute('position', '0 0 0');
             bg.setAttribute('data-raycastable', '');
-            bg.setAttribute('rotation', '-45 0 0');
             menu.appendChild(bg);
 
             // Define tours (folders) and display names
@@ -532,7 +532,7 @@ class VirtualTourApp {
                 label.setAttribute('color', '#fff');
                 label.setAttribute('width', '1.2');
                 label.setAttribute('position', '0 -0.2 0');
-                label.setAttribute('font', 'Roboto-msdf.json');
+                label.setAttribute('font', 'https://cdn.aframe.io/fonts/DejaVu-sdf.fnt');
                 label.setAttribute('shader', 'msdf');
                 label.setAttribute('data-raycastable', '');
 
@@ -578,54 +578,46 @@ class VirtualTourApp {
         }
     }
 
-    // Watch camera pitch; show menu only when looking down in XR
+// Watch camera pitch; show menu only when looking down in XR
     startBottomLookWatcher() {
         if (this.bottomLookRAF) return;
 
         const menu = document.querySelector('#vr-tour-switcher');
-        if (!menu) return;
+        const cameraEl = document.querySelector('#main-camera');
+        if (!menu || !cameraEl) return;
 
-        const tmpForward = new THREE.Vector3(0, 0, -1);
+        const cameraObj = cameraEl.object3D;
         const renderer = this.el.sceneEl.renderer;
-        const loop = (t, frame) => {
+
+        const loop = () => {
+            // Hide if not in XR mode
             if (!this.isXRMode) {
                 menu.setAttribute('visible', 'false');
                 this.bottomLookRAF = null;
+                renderer.setAnimationLoop(null);
                 return;
             }
 
-            const session = renderer.xr.getSession();
-            if (session && frame) {
-                const pose = frame.getViewerPose(renderer.xr.getReferenceSpace());
-                if (pose) {
-                    const orientation = pose.transform.orientation;
-                    const q = new THREE.Quaternion(
-                        orientation.x,
-                        orientation.y,
-                        orientation.z,
-                        orientation.w
-                    );
-                    const forward = tmpForward.clone().applyQuaternion(q).normalize();
-                    const lookingDown = forward.y < -0.5;
-                    menu.setAttribute('visible', lookingDown ? 'true' : 'false');
-                }
-            }
+            // Get camera forward direction in world space
+            const forward = new THREE.Vector3(0, 0, -1);
+            forward.applyQuaternion(cameraObj.getWorldQuaternion(new THREE.Quaternion())).normalize();
 
-            this.bottomLookRAF = renderer.setAnimationLoop(loop);
+            // If camera is pitched down enough, show the menu
+            const lookingDown = forward.y < -0.5; // adjust threshold if needed (-0.3 = more sensitive)
+            menu.setAttribute('visible', lookingDown ? 'true' : 'false');
         };
 
-        this.bottomLookRAF = renderer.setAnimationLoop(loop);
+        // Use XR-safe animation loop
+        renderer.setAnimationLoop(loop);
+        this.bottomLookRAF = true;
     }
 
+    // Stop watching camera pitch and hide menu
     stopBottomLookWatcher() {
         const renderer = this.el?.sceneEl?.renderer;
 
-        if (renderer && renderer.setAnimationLoop && this.bottomLookRAF) {
-            // If using WebXR loop
+        if (renderer && renderer.setAnimationLoop) {
             renderer.setAnimationLoop(null);
-        } else if (this.bottomLookRAF) {
-            // If using desktop RAF
-            cancelAnimationFrame(this.bottomLookRAF);
         }
 
         this.bottomLookRAF = null;
