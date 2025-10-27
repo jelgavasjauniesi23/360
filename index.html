@@ -52,7 +52,7 @@
                      background="color: #000"
                      controller-visibility
                      loading-screen="dotsColor: #667eea; backgroundColor: #000">
-                
+                     
                 <!-- 360° Image Sphere -->
                 <a-sky id="sky-sphere" 
                     radius="500" 
@@ -60,19 +60,10 @@
                     rotation="0 -130 0"
                     data-raycastable>
                 </a-sky>
-                <script>
-                    AFRAME.registerComponent('lock-camera-y', {
-                    schema: { y: {type: 'number', default: 1.65} },
-                    tick: function () {
-                        let cam = this.el.object3D;
-                        cam.position.y = this.data.y;
-                    }
-                    });
-                    </script>
 
                 <!-- Camera with look controls -->
                 <a-camera id="main-camera" 
-                          look-controls="enabled: true; pointerLockEnabled: true; magicWindowTrackingEnabled: false"
+                          look-controls="enabled: true; pointerLockEnabled: true;"
                           wasd-controls="enabled: false"
                           cursor="rayOrigin: mouse"
                           raycaster="objects: [data-raycastable]"
