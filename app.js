@@ -406,36 +406,19 @@ class VirtualTourApp {
             leftController.setAttribute('visible', isActive ? 'true' : 'false');
             rightController.setAttribute('visible', isActive ? 'true' : 'false');
         }
-        
+        // Adjust camera height when entering/exiting XR mode
+        // if (this.camera) {
+        //     try {
+        //         const targetY = isActive ? 10 : 1.65; // raise camera in XR mode
+        //         this.camera.setAttribute('position', `0 ${targetY} 0`);
+        //         if (this.camera.object3D && this.camera.object3D.position) {
+        //             this.camera.object3D.position.y = targetY;
+        //         }
+        //     } catch (e) {
+        //         console.warn('Failed to adjust camera height for XR mode:', e);
+        //     }
+        // }
         this.isXRMode = isActive;
-        
-        // Lock camera height in VR mode
-        if (isActive && this.camera) {
-            // Store the initial camera height when entering VR
-            this.fixedCameraHeight = 1.65; // Standard eye height
-            
-            // Add a tick listener to keep camera at fixed height
-            if (!this.cameraHeightLock) {
-                this.cameraHeightLock = () => {
-                    if (this.isXRMode && this.camera && this.camera.object3D) {
-                        this.camera.object3D.position.y = this.fixedCameraHeight;
-                    }
-                };
-                this.scene.addEventListener('render-target-loaded', this.cameraHeightLock);
-                
-                // Use requestAnimationFrame for continuous updates
-                const updateCameraHeight = () => {
-                    if (this.isXRMode && this.camera && this.camera.object3D) {
-                        this.camera.object3D.position.y = this.fixedCameraHeight;
-                    }
-                    if (this.isXRMode) {
-                        requestAnimationFrame(updateCameraHeight);
-                    }
-                };
-                requestAnimationFrame(updateCameraHeight);
-            }
-        }
-        
         this.renderHotspots();
     }
 
@@ -703,18 +686,6 @@ renderHotspots() {
 
   console.log('Current image hotspots:', currentHotspots.length);
 
-  // Precompute camera info for XR mode
-  const isXR = !!this.isXRMode;
-  let camPos = null;
-  let camDir = null;
-  if (isXR && this.camera && this.camera.object3D) {
-    camPos = new THREE.Vector3();
-    this.camera.object3D.getWorldPosition(camPos);
-    // Camera forward direction (-Z in camera space)
-    camDir = new THREE.Vector3(0, 0, -1);
-    camDir.applyQuaternion(this.camera.object3D.quaternion).normalize();
-  }
-
   currentHotspots.forEach(hotspot => {
     if (!hotspot.position || !hotspot.position.aframe) {
       console.warn('Skipping hotspot with invalid position:', hotspot);
@@ -722,22 +693,21 @@ renderHotspots() {
     }
 
     const hotspotElement = document.createElement('a-sphere');
+    hotspotElement.setAttribute('position', hotspot.position.aframe);
 
-    if (isXR && camPos && camDir) {
-      // In XR, place hotspot in front of camera at desired distance
-      const distance = parseFloat(hotspot.distance || '1.0');
-      const newPos = camPos.clone().add(camDir.clone().multiplyScalar(distance));
-      // Lock Y to fixed camera height (eye level) if available
-      if (typeof this.fixedCameraHeight === 'number') {
-        newPos.y = this.fixedCameraHeight;
-      } else {
-        newPos.y = camPos.y;
-      }
-      hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y} ${newPos.z}`);
+    if (this.isXRMode && this.camera && this.camera.object3D) {
+      const camPos = new THREE.Vector3();
+      this.camera.object3D.getWorldPosition(camPos);
+      const basePos = new THREE.Vector3(
+        parseFloat(hotspot.position.x),
+        parseFloat(hotspot.position.y),
+        parseFloat(hotspot.position.z)
+      );
+      const vec = basePos.clone().sub(camPos).multiplyScalar(4);
+      const newPos = camPos.clone().add(vec);
+      hotspotElement.setAttribute('position', `${newPos.x} ${newPos.y - 3} ${newPos.z}`);
       hotspotElement.setAttribute('radius', '0.75');
     } else {
-      // Non-XR: use saved absolute position
-      hotspotElement.setAttribute('position', hotspot.position.aframe);
       hotspotElement.setAttribute('radius', '0.25');
     }
 
