@@ -40,7 +40,9 @@ class VirtualTourApp {
             return;
         }
         this.scene.addEventListener('enter-vr', () => {
-            this.onViewModeChange(true);
+            if ("xr" in window.navigator) {
+                this.onViewModeChange(true);
+            }
         });
 
         this.scene.addEventListener('exit-vr', () => {
@@ -708,7 +710,7 @@ renderHotspots() {
     } else {
       hotspotElement.setAttribute('radius', '0.25');
     }
-    
+
     hotspotElement.setAttribute('color', '#667eea');
     hotspotElement.setAttribute('opacity', '0.8');
     hotspotElement.setAttribute('cursor-listener', '');
