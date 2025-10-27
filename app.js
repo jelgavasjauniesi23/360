@@ -695,7 +695,7 @@ renderHotspots() {
     const hotspotElement = document.createElement('a-sphere');
     hotspotElement.setAttribute('position', hotspot.position.aframe);
 
-    if (this.isXRMode === true && this.camera && this.camera.object3D) {
+    if (this.isXRMode && this.camera && this.camera.object3D) {
       const camPos = new THREE.Vector3();
       this.camera.object3D.getWorldPosition(camPos);
       const basePos = new THREE.Vector3(
