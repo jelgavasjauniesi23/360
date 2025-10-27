@@ -467,7 +467,7 @@ class VirtualTourApp {
             menu.setAttribute('visible', 'false');
             // Place slightly below and in front of the camera
             menu.setAttribute('position', '0 -0.9 -1.4');
-            // menu.setAttribute('rotation', '45 0 0');
+            menu.setAttribute('rotation', '45 0 0');
 
             // A subtle background panel behind cards
             const bg = document.createElement('a-plane');
