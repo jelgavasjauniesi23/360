@@ -466,8 +466,8 @@ class VirtualTourApp {
             menu.setAttribute('id', 'vr-tour-switcher');
             menu.setAttribute('visible', 'false');
             // Place slightly below and in front of the camera
-            menu.setAttribute('position', '0 -1 -1.4');
-            menu.setAttribute('rotation', '45 0 0');
+            menu.setAttribute('position', '0 -0.9 -1.4');
+            // menu.setAttribute('rotation', '45 0 0');
 
             // A subtle background panel behind cards
             const bg = document.createElement('a-plane');
@@ -481,9 +481,9 @@ class VirtualTourApp {
 
             // Define tours (folders) and display names
             const tours = [
-                { key: 'pakapiens', label: 'Pakāpiens' },
+                { key: 'pakapiens', label: 'Pakapiens' },
                 { key: 'pietura', label: 'Pietura' },
-                { key: 'spaktele', label: 'Špaktele' }
+                { key: 'spaktele', label: 'Spaktele' }
             ];
 
             // Layout parameters
