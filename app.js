@@ -647,7 +647,7 @@ class VirtualTourApp {
 
     renderHotspots() {
         console.log('renderHotspots called, total hotspots:', this.hotspots.length);
-        const scene = document.querySelector('#image-container') || document.querySelector('a-sky');
+        const scene = document.querySelector('#aframe-scene');
         if (!scene) return;
                 AFRAME.registerComponent('fixed-to-camera', {
         tick: function () {
@@ -657,7 +657,7 @@ class VirtualTourApp {
             this.el.object3D.rotation.set(0, camRot.y * Math.PI / 180, 0);
             }
         }
-});
+        });
         // Remove existing hotspots
         const existingHotspots = scene.querySelectorAll('.hotspot');
         console.log('Removing existing hotspots:', existingHotspots.length);
